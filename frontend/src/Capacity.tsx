@@ -6,6 +6,7 @@ import {
   Group,
   NumberInput,
   Stack,
+  Switch,
   Table,
   Text,
   Title,
@@ -73,6 +74,7 @@ interface Capacity {
   warnings: string[];
   calculated_at: string;
   can_edit_minimum: boolean;
+  monitored: boolean;
   error?: string;
 }
 interface DashboardRow {
@@ -94,6 +96,7 @@ function requireCapacity(data: any): Capacity {
     !data ||
     typeof data.current_capacity !== "number" ||
     !Array.isArray(data.material_limits) ||
+    typeof data.monitored !== "boolean" ||
     !Array.isArray(data.bom_hierarchy) ||
     !Array.isArray(data.purchase_shortages) ||
     !Array.isArray(data.manufacturing_suggestions) ||
@@ -204,6 +207,7 @@ function Requirements({
 export function CapacityPanel({ context }: { context: Context }) {
   const [data, setData] = useState<Capacity | null>(null);
   const [minimum, setMinimum] = useState<string | number>(0);
+  const [monitored, setMonitored] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -221,6 +225,7 @@ export function CapacityPanel({ context }: { context: Context }) {
           const result = requireCapacity(data);
           setData(result);
           setMinimum(result.minimum);
+          setMonitored(result.monitored);
           setCollapsed(new Set());
         }
       })
@@ -239,7 +244,7 @@ export function CapacityPanel({ context }: { context: Context }) {
     setSaving(true);
     setError("");
     try {
-      await context.api.patch(`${base}${context.id}/`, { minimum });
+      await context.api.patch(`${base}${context.id}/`, { minimum, monitor: monitored });
       setRefresh((v) => v + 1);
     } catch (error) {
       setError(errorText(error));
@@ -395,6 +400,12 @@ export function CapacityPanel({ context }: { context: Context }) {
               allowNegative={false}
               disabled={!data.can_edit_minimum || saving}
             />
+            <Switch
+              label="ウィジェットに表示"
+              checked={monitored}
+              onChange={(event) => setMonitored(event.currentTarget.checked)}
+              disabled={!data.can_edit_minimum || saving}
+            />
             <Button
               onClick={save}
               loading={saving}
@@ -404,9 +415,10 @@ export function CapacityPanel({ context }: { context: Context }) {
                 !Number.isInteger(minimum)
               }
             >
-              保存・監視対象に追加
+              設定を保存
             </Button>
           </Group>
+          <Text size="xs">ウィジェットへの表示は設定を保存した後に反映されます。最低製造余力は非表示でも警告判定に使用します。</Text>
           <Text size="sm">
             最低製造余力は警告判定の閾値です。以下の調達不足と製造提案は、この目標数量を達成するための分析です。
             上の材料別上限は最低製造余力の設定値に依存しません。
@@ -440,7 +452,7 @@ export function CapacityPanel({ context }: { context: Context }) {
   );
 }
 
-export function CapacityDashboard({ context }: { context: Context }) {
+export function CapacityDashboard({ context, compact = false }: { context: Context; compact?: boolean }) {
   const [rows, setRows] = useState<DashboardRow[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -488,6 +500,31 @@ export function CapacityDashboard({ context }: { context: Context }) {
       active = false;
     };
   }, [context.api, refresh]);
+  if (compact) {
+    const alerts = rows.filter((row) => row.status !== "ok").length;
+    const open = () => context.navigate("/plugin/production-capacity/capacity");
+    return (
+      <Stack
+        gap="xs"
+        role="button"
+        tabIndex={0}
+        aria-label="製造余力一覧を開く"
+        onClick={open}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") open(); }}
+        style={{ cursor: "pointer" }}
+      >
+        <Text fw={700}>製造余力一覧を開く ↗</Text>
+        {error ? <Text c="red" size="sm">読み込みエラー: {error}</Text> :
+          busy ? <Text size="sm">計算中…</Text> :
+          <Text size="sm">監視対象 {rows.length}件・余力不足／エラー {alerts}件</Text>}
+        {!busy && rows.slice(0, 3).map((row) => (
+          <Text key={row.part} size="xs" c={row.status === "ok" ? undefined : "red"}>
+            {row.name}: {row.current_capacity ?? "—"} / 最低 {row.minimum ?? "—"}
+          </Text>
+        ))}
+      </Stack>
+    );
+  }
   return (
     <Stack gap="xs">
       <Group justify="space-between">
@@ -557,5 +594,8 @@ export function renderPanel(context: Context) {
   return <CapacityPanel context={context} />;
 }
 export function renderDashboardItem(context: Context) {
+  return <CapacityDashboard context={context} compact />;
+}
+export function renderCapacityListPage(context: Context) {
   return <CapacityDashboard context={context} />;
 }

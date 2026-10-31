@@ -2,7 +2,7 @@ import React from "react";
 import { MantineProvider } from "@mantine/core";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { CapacityDashboard, CapacityPanel } from "../src/Capacity";
+import { CapacityDashboard, CapacityPanel, renderDashboardItem } from "../src/Capacity";
 
 const result = {
   part: 1,
@@ -14,6 +14,7 @@ const result = {
   minimum: 10,
   shortfall: 2,
   can_edit_minimum: true,
+  monitored: true,
   material_limits: [],
   bom_hierarchy: [],
   purchase_shortages: [],
@@ -93,13 +94,24 @@ describe("capacity UI", () => {
     fireEvent.change(screen.getByLabelText("最低製造余力"), {
       target: { value: "15" },
     });
-    fireEvent.click(screen.getByText("保存・監視対象に追加"));
+    fireEvent.click(screen.getByText("設定を保存"));
     await waitFor(() =>
       expect(ctx.api.patch).toHaveBeenCalledWith(
         "/plugin/production-capacity/capacity/1/",
-        { minimum: 15 },
+        { minimum: 15, monitor: true },
       ),
     );
+  });
+  it("saves the widget visibility switch independently of the minimum", async () => {
+    const ctx = context();
+    show(<CapacityPanel context={ctx} />);
+    const toggle = await screen.findByRole("switch", { name: "ウィジェットに表示" });
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByText("設定を保存"));
+    await waitFor(() => expect(ctx.api.patch).toHaveBeenCalledWith(
+      "/plugin/production-capacity/capacity/1/",
+      { minimum: 10, monitor: false },
+    ));
   });
   it("displays backend calculation error rather than zero capacity", async () => {
     const ctx = context(
@@ -124,7 +136,7 @@ describe("capacity UI", () => {
     expect(
       (
         screen.getByRole("button", {
-          name: "保存・監視対象に追加",
+          name: "設定を保存",
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
@@ -162,6 +174,13 @@ describe("capacity UI", () => {
     expect(products[1].textContent).toContain("製品A");
     fireEvent.click(screen.getByText("A-001 · 製品A"));
     expect(ctx.navigate).toHaveBeenCalledWith("/part/1");
+  });
+  it("opens the dedicated list from the compact widget", async () => {
+    const ctx = context(vi.fn().mockResolvedValue({ data: { count: 1, limit: 25, results: [result] } }));
+    show(renderDashboardItem(ctx));
+    await screen.findByText(/監視対象 1件/);
+    fireEvent.click(screen.getByRole("button", { name: "製造余力一覧を開く" }));
+    expect(ctx.navigate).toHaveBeenCalledWith("/plugin/production-capacity/capacity");
   });
   it("explains an HTML response when URL integration is disabled", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));

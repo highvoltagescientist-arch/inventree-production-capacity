@@ -174,6 +174,10 @@ class CapacityModelTests(TestCase):
         self.stock.quantity = 60
         self.stock.save()
         assert self.request(DashboardView).data["results"][0]["current_capacity"] == 10
+        assert self.request(method="patch", data={"monitor": False}).status_code == 200
+        assert self.request(DashboardView).data["count"] == 0
+        assert self.request(method="patch", data={"monitor": True}).status_code == 200
+        assert self.request(DashboardView).data["count"] == 1
 
     def test_entrypoint_and_official_ui_features(self):
         from importlib.metadata import entry_points
@@ -207,6 +211,9 @@ class CapacityModelTests(TestCase):
             assert not plugin.get_ui_panels(None, {"target_model": "stockitem"})
             assert plugin.get_ui_dashboard_items(None, {})[0]["source"].endswith(
                 "Capacity.js:renderDashboardItem"
+            )
+            assert plugin.get_ui_routes(None, {})[0]["source"].endswith(
+                "Capacity.js:renderCapacityListPage"
             )
 
     @override_settings(ROOT_URLCONF="tests.integration.test_models")

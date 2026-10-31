@@ -17,7 +17,8 @@
 - BOM階層を初期状態ですべて展開。サブアセンブリごとに使用可能な完成在庫と、下位材料から単独で追加製造できる数量を表示
 - 共通材料を合算する多階層BOM計算。在庫サブアセンブリを先に使用し、不足分を材料から製造
 - 最低余力達成に不足する購入部品・材料と、下位から順に製造するサブアセンブリの提案
-- 部品詳細パネルと、監視対象の現在余力・最低余力・不足・状態を警告優先で表示するDashboard Widget。ウィジェットは一覧に必要な余力だけを計算
+- 部品詳細パネルと、監視対象の概要を示すDashboard Widget。ウィジェットを押すとプラグイン専用の一覧ページに移動し、現在余力・最低余力・不足・状態を警告優先で表示
+- 部品詳細パネルの「ウィジェットに表示」スイッチで一覧への掲載を個別に設定。最低余力の値とは独立
 - 部品メタデータ `production_capacity.minimum` に最低余力を保存。標準Minimum Stockとは独立
 - 認証・閲覧権限・部品変更権限を検証。セッション認証での変更はCSRF保護を使用
 - 循環BOM、不正数量、欠損部品は計算エラーとして表示
@@ -48,21 +49,21 @@
 
 Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
 
-InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.7へ更新してください。更新後にプラグインを有効化します。
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.8へ更新してください。更新後にプラグインを有効化します。
 
 Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.7-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.8-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
 3. 管理画面のプラグイン一覧で「製造余力管理 / ProductionCapacity」を有効にします。
 4. グローバル設定の `ENABLE_PLUGINS_INTERFACE`（画面統合）と `ENABLE_PLUGINS_URL`（計算APIのURL統合）を有効にします。URL統合が無効だと、計算APIの代わりにInvenTreeの画面へ転送されます。
 5. 有効化時に静的ファイルが収集されます。配布更新後は標準の `invoke static` を実行し、ブラウザを再読み込みしてください。Dockerではコンテナ内で実行します。
-6. 完成品詳細の「製造余力」パネルで最低余力を保存するとDashboardの監視対象になります。0を保存した製品も監視対象です。
+6. 部品詳細の「製造余力」パネルで「ウィジェットに表示」を選び、設定を保存します。最低余力は0でも掲載できます。旧版で最低余力を保存済みの部品は、更新後も掲載状態を維持します。
 7. ダッシュボードのウィジェット追加画面で「製造余力一覧」を選択します。
 
 閲覧には部品・BOM・在庫・製造・購入・販売・移動の閲覧権限、最低余力の変更には部品変更権限が必要です。標準の権限継承を使用します。
@@ -117,7 +118,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.7-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.8-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 
@@ -131,7 +132,7 @@ GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テ�
 
 小数数量はJSON文字列、余力と最低余力は整数です。上限は10億個で、到達時は `capacity_capped: true` とUIの「以上」で下限値と示します。
 
-一覧APIは最大100件ずつ取得し、ページ内で警告優先です。Dashboardは全ページを順次読み、全対象を警告優先に並べ直します。不正BOMは製品ごとのエラーとして表示します。
+一覧APIは最大100件ずつ取得し、ページ内で警告優先です。Dashboardと専用一覧は全ページを順次読み、全対象を警告優先に並べ直します。不正BOMは製品ごとのエラーとして表示します。掲載条件はメタデータの `production_capacity.monitor=true` で、旧版の最低余力のみ保存された部品も掲載します。ウィジェットや一覧の計算では詳細な材料別上限・BOM階層の計算を省きます。
 
 ## 制約・未実装
 

@@ -1,7 +1,7 @@
 {
   "name": "inventree-production-capacity-ui",
   "private": true,
-  "version": "0.1.7",
+  "version": "0.1.8",
   "type": "module",
   "scripts": {"build": "tsc --noEmit && vite build", "test": "vitest run"},
   "dependencies": {"react": "19.2.7", "react-dom": "19.2.7", "@mantine/core": "9.7.1", "@mantine/hooks": "9.7.1"},

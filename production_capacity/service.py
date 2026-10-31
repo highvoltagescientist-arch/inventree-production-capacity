@@ -17,14 +17,27 @@ from .engine import CalculationError, Edge, Engine, Node, number
 METADATA_KEY = "production_capacity"
 
 
-def minimum_for(part):
-    """Read only our metadata namespace and validate malformed stored values."""
+def capacity_metadata(part):
+    """Read and validate the plugin's metadata namespace."""
     if part.metadata is not None and not isinstance(part.metadata, dict):
         raise CalculationError("Invalid part metadata")
     data = part.get_metadata(METADATA_KEY, {})
     if not isinstance(data, dict):
         raise CalculationError("Invalid production_capacity metadata")
-    return data.get("minimum", 0)
+    return data
+
+
+def minimum_for(part):
+    return capacity_metadata(part).get("minimum", 0)
+
+
+def monitor_for(part):
+    data = capacity_metadata(part)
+    # Preserve old opt-ins saved before the explicit switch existed.
+    value = data.get("monitor", "minimum" in data)
+    if type(value) is not bool:
+        raise CalculationError("Invalid production_capacity monitor setting")
+    return value
 
 
 def snapshot(root):
@@ -144,6 +157,7 @@ def calculate(part):
             "warnings": warnings,
             "calculated_at": timezone.now().isoformat(),
             "can_edit_minimum": False,
+            "monitored": monitor_for(part),
         }
     )
     return result

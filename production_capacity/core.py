@@ -46,3 +46,13 @@ class ProductionCapacity(UrlsMixin, UserInterfaceMixin, InvenTreePlugin):
                 "options": {"width": 6, "height": 5},
             }
         ]
+
+    def get_ui_routes(self, request, context, **kwargs):
+        return [
+            {
+                "key": "production-capacity-list",
+                "title": "製造余力一覧",
+                "source": self.plugin_static_file("Capacity.js:renderCapacityListPage"),
+                "options": {"path": "capacity"},
+            }
+        ]

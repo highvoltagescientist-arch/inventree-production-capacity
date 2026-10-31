@@ -2,6 +2,7 @@
 
 from build.models import Build
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from order.models import PurchaseOrder, SalesOrder, TransferOrder
 from part.models import BomItem, Part
@@ -53,11 +54,20 @@ class CapacityView(APIView):
     def patch(self, request, pk):
         if not can_edit(request.user):
             raise PermissionDenied("Part change permission required")
+        has_minimum = "minimum" in request.data
+        has_monitor = "monitor" in request.data
+        if not has_minimum and not has_monitor:
+            raise ValidationError("minimum or monitor is required")
         minimum = request.data.get("minimum")
-        if type(minimum) is not int or not 0 <= minimum <= MAX_CAPACITY:
+        if has_minimum and (
+            type(minimum) is not int or not 0 <= minimum <= MAX_CAPACITY
+        ):
             raise ValidationError(
                 {"minimum": "0～1000000000の整数を指定してください。"}
             )
+        monitor = request.data.get("monitor")
+        if has_monitor and type(monitor) is not bool:
+            raise ValidationError({"monitor": "真偽値を指定してください。"})
         with transaction.atomic():
             part = get_object_or_404(Part.objects.select_for_update(), pk=pk)
             if part.metadata is not None and not isinstance(part.metadata, dict):
@@ -65,9 +75,20 @@ class CapacityView(APIView):
             data = part.get_metadata(METADATA_KEY, {})
             if not isinstance(data, dict):
                 raise ValidationError({"minimum": "保存済みメタデータが不正です。"})
-            part.set_metadata(METADATA_KEY, {**data, "minimum": minimum}, commit=False)
+            updated = dict(data)
+            if has_minimum:
+                updated["minimum"] = minimum
+            if has_monitor:
+                updated["monitor"] = monitor
+            part.set_metadata(METADATA_KEY, updated, commit=False)
             part.save(update_fields=["metadata"])
-        return Response({"part": pk, "minimum": minimum})
+        return Response(
+            {
+                "part": pk,
+                "minimum": updated.get("minimum", 0),
+                "monitored": updated.get("monitor", "minimum" in updated),
+            }
+        )
 
 
 class DashboardView(APIView):
@@ -81,12 +102,21 @@ class DashboardView(APIView):
             raise ValidationError("Invalid pagination") from exc
         if offset < 0 or not 1 <= limit <= 100:
             raise ValidationError("offset >= 0, 1 <= limit <= 100")
-        # Only explicitly monitored products: opt in by saving a minimum.
-        parts = Part.objects.filter(
-            active=True,
-            assembly=True,
-            metadata__production_capacity__minimum__isnull=False,
-        ).order_by("pk")
+        # Old saved targets remain monitored until explicitly switched off.
+        parts = (
+            Part.objects.filter(
+                active=True,
+                assembly=True,
+            )
+            .filter(
+                Q(metadata__production_capacity__monitor=True)
+                | Q(
+                    metadata__production_capacity__minimum__isnull=False,
+                    metadata__production_capacity__monitor__isnull=True,
+                )
+            )
+            .order_by("pk")
+        )
         count = parts.count()
         rows = []
         for part in parts[offset : offset + limit]:
