@@ -34,9 +34,10 @@ Plugin CreatorのCookiecutterテンプレートを実際に生成し、UrlsMixin
 
 ## 検証環境と範囲
 
-- InvenTree **1.7.0 dev**、コミット `d96174cddbc2566fea53b3fe39b5d4aa5d30fbf1`
-- Docker上のPython 3.12 / Django 5.2.17、PostgreSQL 15、Redis 7
-- プラグインを `pip install -e` で導入し、専用DB `test_production_capacity` で統合テスト
+- InvenTree **1.6.3**（公式Dockerイメージ）および **1.7.0 dev**、コミット `d96174cddbc2566fea53b3fe39b5d4aa5d30fbf1`
+- 1.7.0 dev：Docker上のPython 3.12 / Django 5.2.17、PostgreSQL 15、Redis 7
+- 1.7.0 dev：プラグインを `pip install -e` で導入し、専用DB `test_production_capacity` で統合テスト
+- 1.6.3：公式イメージ `inventree/inventree:1.6.3` に0.1.1をpip導入し、一時SQLiteテストDBで17件の統合テスト。プラグイン登録・UI機能・静的ファイル収集も確認
 - ホストのPython 3.14で純粋な計算エンジンのテスト
 - Node.js 26.13 / React 19.2.7 / Mantine 9.7.1 / Vite 7.3.7でUIテスト・TypeScript検査・本番ビルド
 
@@ -49,7 +50,8 @@ GitHub Actionsの設定例 `docs/ci-workflow.example.yml` はエンジン・UI�
 | 検証 | 結果 |
 | --- | --- |
 | 純粋な計算エンジン | 33件成功 |
-| InvenTree実モデル・プラグイン・API | 17件成功 |
+| InvenTree 1.6.3 実モデル・プラグイン・API | 17件成功（SQLite、一時Dockerコンテナ） |
+| InvenTree 1.7.0 dev 実モデル・プラグイン・API | 17件成功（PostgreSQL） |
 | React UI描画・操作 | 5件成功 |
 | TypeScript検査・Vite本番ビルド | 成功 |
 | Ruff検査・整形チェック | 成功 |

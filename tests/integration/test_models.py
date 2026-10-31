@@ -189,6 +189,7 @@ class CapacityModelTests(TestCase):
         from plugin.registry import registry
         from plugin.staticfiles import copy_plugin_static_files
 
+        registry.reload_plugins(force_reload=True, collect=True)
         plugin = registry.get_plugin("production-capacity", active=None)
         assert plugin is not None
         PluginConfig.objects.filter(key="production-capacity").update(active=True)

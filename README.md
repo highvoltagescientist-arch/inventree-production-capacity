@@ -4,10 +4,10 @@
 
 ## 対応環境
 
-- InvenTree **1.7.0 dev**。開発時の最新公式コミット `d96174cddbc2566fea53b3fe39b5d4aa5d30fbf1` で統合テストを実行しています。
+- InvenTree **1.6.3** と **1.7.0 dev**。1.6.3の公式Dockerイメージと、1.7.0 devの公式コミット `d96174cddbc2566fea53b3fe39b5d4aa5d30fbf1` で実モデル統合テストを実行しています。
 - Python 3.12以上、React 19.2 / Mantine 9.7系のホスト環境。
-- 旧バージョンは未検証です。特に `StockItem.bulk_allocation_count` と新しいBOM数量フィールドに依存します。
-- Privateリポジトリでのローカル導入用です。PyPIへの公開処理はありません。
+- 1.6.2以前は未検証です。`StockItem.bulk_allocation_count` とBOM数量フィールドに依存します。
+- GitHubのソースURLまたはWheelから導入できます。PyPIへの公開処理はありません。
 
 ## 機能
 
@@ -38,12 +38,16 @@
 
 ## インストール・有効化
 
-Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。
+Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
+
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの0.1.0は同じ画面から0.1.1へ更新してください。更新後にプラグインを有効化します。
+
+Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.0-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.1-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
@@ -105,7 +109,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.0-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.1-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 

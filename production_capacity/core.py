@@ -12,7 +12,7 @@ class ProductionCapacity(UrlsMixin, UserInterfaceMixin, InvenTreePlugin):
     TITLE = "製造余力管理"
     DESCRIPTION = "多階層BOMと引当を考慮した製造可能数量"
     VERSION = __version__
-    MIN_VERSION = "1.7.0"
+    MIN_VERSION = "1.6.3"
 
     def setup_urls(self):
         from django.urls import path
