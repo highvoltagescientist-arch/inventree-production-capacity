@@ -157,6 +157,8 @@ function Requirements({
   proposals?: boolean;
 }) {
   const [selected, setSelected] = useState<{ row: Requirement; supplierPart?: number } | null>(null);
+  const [orderError, setOrderError] = useState("");
+  const [orderNotice, setOrderNotice] = useState("");
   const orderForm = context.forms?.create({
     url: proposals ? "build/" : "order/po-line/",
     title: proposals ? "製造オーダーを作成" : "発注明細を追加",
@@ -178,6 +180,8 @@ function Requirements({
   }, [selected]);
 
   async function openOrder(row: Requirement) {
+    setOrderError("");
+    setOrderNotice("");
     if (!context.forms) {
       context.navigate(proposals ? `/part/${row.part}/builds` : "/purchasing/index/purchaseorders");
       return;
@@ -187,16 +191,28 @@ function Requirements({
       return;
     }
     try {
-      const { data } = await context.api.get(`company/part/?part=${row.part}&active=true&limit=2`);
+      const { data } = await context.api.get(`/api/company/part/?part=${row.part}&active=true&limit=2`);
+      if (!Number.isInteger(data?.count) || !Array.isArray(data?.results)) {
+        throw new Error("サプライヤー品目APIの応答が不正です");
+      }
+      if (data.count === 0) {
+        setOrderError(`${row.name} のサプライヤー品目がありません。先に部品の「サプライヤー」画面で登録してください。`);
+        return;
+      }
       const supplierPart = data?.count === 1 ? data.results?.[0]?.pk : undefined;
+      if (data.count > 1) {
+        setOrderNotice(`${row.name} のサプライヤー品目が複数あります。発注明細フォームで選択してください。`);
+      }
       setSelected({ row, supplierPart });
-    } catch {
-      setSelected({ row });
+    } catch (error) {
+      setOrderError(`サプライヤー品目を取得できませんでした: ${errorText(error)}`);
     }
   }
   return (
     <Stack gap="xs">
       {orderForm?.modal}
+      {orderError && <Alert color="red">{orderError}</Alert>}
+      {orderNotice && <Alert color="blue">{orderNotice}</Alert>}
       <Title order={5}>{title}</Title>
       {rows.length ? (
         <Table.ScrollContainer minWidth={650}>
