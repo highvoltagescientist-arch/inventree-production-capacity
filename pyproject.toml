@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inventree-production-capacity"
+version = "0.1.0"
+description = "Recursive production capacity planning for InvenTree"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+license-files = ["THIRD_PARTY_NOTICES.md"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "build", "ruff"]
+
+[project.entry-points.inventree_plugins]
+ProductionCapacity = "production_capacity.core:ProductionCapacity"
+
+[tool.setuptools.packages.find]
+include = ["production_capacity*"]
+
+[tool.setuptools.package-data]
+production_capacity = ["static/*.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]

@@ -1,2 +1,135 @@
-# inventree-production-capacity
-InvenTree plugin for calculating and monitoring production capacity based on BOM and stock availability
+# InvenTree 製造余力管理
+
+多階層BOM、サブアセンブリ在庫、材料在庫、引当、発注済みの未入荷数量から、完成品を**追加で何個製造できるか**を計算する個人利用向けプラグインです。本体のソース変更や独自DBテーブルは不要です。
+
+## 対応環境
+
+- InvenTree **1.7.0 dev**。開発時の最新公式コミット `d96174cddbc2566fea53b3fe39b5d4aa5d30fbf1` で統合テストを実行しています。
+- Python 3.12以上、React 19.2 / Mantine 9.7系のホスト環境。
+- 旧バージョンは未検証です。特に `StockItem.bulk_allocation_count` と新しいBOM数量フィールドに依存します。
+- Privateリポジトリでのローカル導入用です。PyPIへの公開処理はありません。
+
+## 機能
+
+- 製品ごとの現在余力、入荷後の参考余力、最低余力、不足数量、警告状態
+- 共通材料を合算する多階層BOM計算。在庫サブアセンブリを先に使用し、不足分を材料から製造
+- 最低余力達成に不足する購入部品・材料と、下位から順に製造するサブアセンブリの提案
+- 次の1個を製造する際のボトルネック
+- 部品詳細パネルと、警告を優先表示するDashboard Widget
+- 部品メタデータ `production_capacity.minimum` に最低余力を保存。標準Minimum Stockとは独立
+- 認証・閲覧権限・部品変更権限を検証。セッション認証での変更はCSRF保護を使用
+- 循環BOM、不正数量、欠損部品は計算エラーとして表示
+
+## 計算の初期仕様
+
+完成品の既存在庫は余力に加えません。表示するのは追加製造可能数量です。製品ごとに独立した試算であり、同じ在庫を複数製品が同時利用できるという意味ではありません。計算は在庫を予約しません。
+
+1. `Part.get_bom_items()` から継承BOMを含む構成を取得します。
+2. `StockItem.IN_STOCK_FILTER` で使用可能な実在庫を抽出します。外部保管場所は除外し、保管場所未指定の在庫は含めます。
+3. `StockItem.bulk_allocation_count()` で製造・販売・移動への引当を控除します。
+4. 稼働中・保留中の `BuildLine` の `quantity - consumed - allocated` の正の値も製造予定として確保します。引当と消費済み数量を再度控除しません。
+5. 親から子へのトポロジカル順序で需要を集約し、各品目の在庫を1回だけ消費します。サブアセンブリごとに不足量を1バッチで追加製造する前提です。
+6. BOM数量は `quantity × piece_count × 製造数量 × (1 + attrition/100) + setup_quantity` を `rounding_multiple` で切り上げます。製造量ゼロでは段取り材料を要求しません。実サブアセンブリの追加製造数は整数に切り上げ、仮想部品の展開では小数を保持します。
+7. 入荷後余力は **PLACED（発注済み）**の注文だけから `(quantity - received)` を `SupplierPart.base_quantity()` で換算して加算します。下書き、保留、取消、完了注文は含めません。現在余力とは別計算で、製造予定の確保分は入荷後も優先します。
+
+任意BOM行と消耗品は標準の製造割当対象に合わせて除外し、画面に注記します。代替部品・バリアント在庫は使用せず、BOMの指定品目だけを使用します。継承BOMは使用します。
+
+不足材料が残る製造提案には「下位材料の調達が必要」と表示します。「材料充足」は当該試算の下位材料が足りるという意味で、製造設備・工数・納期の保証ではありません。
+
+## インストール・有効化
+
+Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。
+
+1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
+
+   ```sh
+   python -m pip install /path/to/inventree_production_capacity-0.1.0-py3-none-any.whl
+   ```
+
+2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
+3. 管理画面のプラグイン一覧で「製造余力管理 / ProductionCapacity」を有効にします。
+4. グローバル設定の `ENABLE_PLUGINS_INTERFACE` と `ENABLE_PLUGINS_URL` を有効にします。
+5. 有効化時に静的ファイルが収集されます。配布更新後は標準の `invoke static` を実行し、ブラウザを再読み込みしてください。Dockerではコンテナ内で実行します。
+6. 完成品詳細の「製造余力」パネルで最低余力を保存するとDashboardの監視対象になります。0を保存した製品も監視対象です。
+7. ダッシュボードのウィジェット追加画面で「製造余力一覧」を選択します。
+
+閲覧には部品・BOM・在庫・製造・購入・販売・移動の閲覧権限、最低余力の変更には部品変更権限が必要です。標準の権限継承を使用します。
+
+Docker内への手動pipインストールはコンテナ再作成で失われます。継続利用ではカスタムイメージのビルド時にWheelをインストールするか、InvenTreeの永続的なプラグイン導入方法を使ってください。
+
+## 開発環境
+
+```sh
+python -m venv .venv
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
+# Linux/macOS: source .venv/bin/activate
+python -m pip install -e ".[dev]"
+python -m pytest
+ruff check .
+ruff format --check .
+```
+
+計算エンジンはDjangoなしでテストできます。InvenTree連携には公式の開発環境も必要です。そのPython環境にも `python -m pip install -e /path/to/inventree-production-capacity` で導入します。本体のソース編集は不要です。
+
+UI開発ではNode.js 22.15以上とnpmを使用します。
+
+```sh
+cd frontend
+npm ci
+npm test
+npm run build
+cd ..
+```
+
+React / Mantineは公式Plugin Creatorと同様にホストのグローバルを参照します。別のReactをバンドルしません。`production_capacity/static/Capacity.js` は配布用としてGitにも含めています。UI変更後は必ず再ビルドしてください。
+
+## 実モデル統合テスト
+
+公式開発環境の依存パッケージ、PostgreSQL、Redisが必要です。**本体とプラグインを同じPython環境で読み込めること**を確認してください。
+
+Linuxの例（PowerShellでは `$env:PYTHONPATH = 'プラグインの絶対パス'` と設定）：
+
+```sh
+export PYTHONPATH=/absolute/path/to/inventree-production-capacity
+cd /absolute/path/to/InvenTree/src/backend/InvenTree
+python manage.py test tests.integration.test_models \
+  --settings=tests.integration.settings --keepdb --noinput
+```
+
+専用DB `test_production_capacity` を使い、ライブDBは変更しません。`--keepdb` で再利用します。同じテストDBを使う統合テストは同時実行しないでください。
+
+## Wheelビルド
+
+```sh
+# UI変更時は先に frontend/ で npm ci と npm run build を実行
+python -m build
+```
+
+`dist/inventree_production_capacity-0.1.0-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+
+GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
+
+## REST API
+
+| メソッド | URL | 内容 |
+| --- | --- | --- |
+| GET | `/plugin/production-capacity/capacity/<part_id>/` | 再計算・詳細取得 |
+| PATCH | 同上 | `{"minimum": 100}` を保存 |
+| GET | `/plugin/production-capacity/capacity/?limit=25&offset=0` | 監視対象一覧 |
+
+小数数量はJSON文字列、余力と最低余力は整数です。上限は10億個で、到達時は `capacity_capped: true` とUIの「以上」で下限値と示します。
+
+一覧APIは最大100件ずつ取得し、ページ内で警告優先です。Dashboardは全ページを順次読み、全対象を警告優先に並べ直します。不正BOMは製品ごとのエラーとして表示します。
+
+## 制約・未実装
+
+- 代替品・バリアント在庫の最適配分、切断材料の取り都合・端材・寸法別割付
+- 製品間の同時生産計画、設備・人員・リードタイム・入荷日の計画
+- 製造オーダーの完成予定出力を将来供給として加算する機能
+- 発注・製造オーダー自動作成、メール通知、イベント連携、キャッシュ
+- 監視対象を削除する専用UI。停止時は部品メタデータの `production_capacity` キーを削除してください。
+- ブラウザ上の目視・操作確認は未実施です。UI自動テスト・ビルドと、実モデル・プラグイン検出・静的ファイル収集・APIを検証します。
+
+1製品あたり最大5000部品までです。BOM読み込みは構成品ごとにクエリを発行し、在庫と引当はまとめて取得します。同時更新に対する一貫したDBスナップショットや在庫予約は保証しません。大規模な全製品一覧のクエリ最適化と実データ負荷試験は今後の対象です。
+
+公式APIの調査根拠と検証環境は [docs/verification.md](docs/verification.md) を参照してください。

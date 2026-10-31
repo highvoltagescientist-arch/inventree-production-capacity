@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Frontend dependencies are rebuilt using the committed lock file.
+frontend/node_modules/
+frontend/coverage/
+*.tsbuildinfo
