@@ -289,6 +289,31 @@ def test_purchase_shortage_targets_minimum_through_subassembly():
     assert "bottlenecks" not in result
 
 
+def test_bom_hierarchy_uses_exact_standalone_assembly_capacity():
+    engine = Engine(
+        {
+            1: node(1, bom=[edge(2), edge(4)]),
+            2: node(2, stock=2, bom=[edge(3, 3)]),
+            3: node(3, stock=10),
+            4: node(4, bom=[edge(3)]),
+        },
+        1,
+    )
+    report = engine.report()
+    rows = report["bom_hierarchy"]
+    assert [(row["part"], row["depth"]) for row in rows] == [
+        (1, 0),
+        (2, 1),
+        (3, 2),
+        (4, 1),
+        (3, 2),
+    ]
+    assert rows[1]["available"] == "2"
+    assert rows[1]["additional_capacity"] == 3
+    assert rows[3]["additional_capacity"] == 10
+    assert report["current_capacity"] == 4
+
+
 def test_report_keeps_physical_stock_allocated_and_scheduled_separate():
     engine = Engine(
         {1: node(1, bom=[edge(2)]), 2: node(2, stock=7, scheduled=2, allocated=D(3))}, 1

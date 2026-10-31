@@ -43,6 +43,18 @@ interface MaterialLimit {
   incoming: string;
   scheduled: string;
 }
+interface BomRow {
+  part: number;
+  name: string;
+  ipn: string;
+  path: string;
+  depth: number;
+  kind: "assembly" | "virtual" | "material";
+  available: string;
+  children: boolean;
+  additional_capacity?: number;
+  capacity_capped?: boolean;
+}
 interface Capacity {
   part: number;
   name: string;
@@ -55,6 +67,7 @@ interface Capacity {
   capacity_capped: boolean;
   future_capacity_capped: boolean;
   material_limits: MaterialLimit[];
+  bom_hierarchy: BomRow[];
   purchase_shortages: Requirement[];
   manufacturing_suggestions: Requirement[];
   warnings: string[];
@@ -70,6 +83,7 @@ function requireCapacity(data: any): Capacity {
     !data ||
     typeof data.current_capacity !== "number" ||
     !Array.isArray(data.material_limits) ||
+    !Array.isArray(data.bom_hierarchy) ||
     !Array.isArray(data.purchase_shortages) ||
     !Array.isArray(data.manufacturing_suggestions) ||
     !Array.isArray(data.warnings)
@@ -179,6 +193,7 @@ function Requirements({
 export function CapacityPanel({ context }: { context: Context }) {
   const [data, setData] = useState<Capacity | null>(null);
   const [minimum, setMinimum] = useState<string | number>(0);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -195,6 +210,7 @@ export function CapacityPanel({ context }: { context: Context }) {
           const result = requireCapacity(data);
           setData(result);
           setMinimum(result.minimum);
+          setCollapsed(new Set());
         }
       })
       .catch((error) => {
@@ -254,6 +270,65 @@ export function CapacityPanel({ context }: { context: Context }) {
             {data.future_capacity_capped ? "以上" : ""}{" "}
             個（発注済みの未入荷分を含む試算。現在は使用できません。入荷時期・製造所要時間は考慮しません。）
           </Alert>
+          <Stack gap="xs">
+            <Title order={5}>BOM階層（最初はすべて展開）</Title>
+            <Text size="sm">
+              サブアセンブリの「完成在庫」は引当・製造予定分を除いた使用可能数です。「追加製造」はそのサブアセンブリを単独で材料から作れる数です。
+              親製品や別のサブアセンブリとの共通材料を同時に使う保証はないため、行の数値を足し合わせないでください。
+            </Text>
+            <Table.ScrollContainer minWidth={650}>
+              <Table striped>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>部品・構成</Table.Th>
+                    <Table.Th>完成在庫（使用可能）</Table.Th>
+                    <Table.Th>追加製造可能数</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {data.bom_hierarchy
+                    .filter((row) => {
+                      if (row.path && collapsed.has("")) return false;
+                      const segments = row.path.split("/");
+                      for (let i = 1; i < segments.length; i++) {
+                        if (collapsed.has(segments.slice(0, i).join("/"))) return false;
+                      }
+                      return true;
+                    })
+                    .map((row) => (
+                      <Table.Tr key={row.path || "root"}>
+                        <Table.Td>
+                          <Group gap="xs" wrap="nowrap" style={{ paddingLeft: row.depth * 20 }}>
+                            {row.children ? (
+                              <Button
+                                size="compact-xs"
+                                variant="subtle"
+                                aria-label={`${row.name}を${collapsed.has(row.path) ? "展開" : "折りたたむ"}`}
+                                onClick={() => setCollapsed((previous) => {
+                                  const next = new Set(previous);
+                                  if (next.has(row.path)) next.delete(row.path);
+                                  else next.add(row.path);
+                                  return next;
+                                })}
+                              >
+                                {collapsed.has(row.path) ? "＋" : "−"}
+                              </Button>
+                            ) : <Text w={30}>·</Text>}
+                            <PartLink row={row} context={context} />
+                            {row.kind === "virtual" && <Text size="xs">仮想構成</Text>}
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>{row.kind === "assembly" ? row.available : "—"}</Table.Td>
+                        <Table.Td>
+                          {row.additional_capacity === undefined ? "—" :
+                            `${row.additional_capacity}${row.capacity_capped ? "以上" : ""} 個`}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Stack>
           <Stack gap="xs">
             <Title order={5}>材料別の製造可能数（上限の低い順）</Title>
             <Text size="sm">

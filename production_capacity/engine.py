@@ -258,6 +258,45 @@ class Engine:
             )
         return sorted(rows, key=lambda row: (row["capacity"], row["name"], row["part"]))
 
+    def bom_hierarchy(self, current: int, capped: bool) -> list[dict]:
+        """Flatten BOM paths for display, keeping repeated shared parts visible."""
+        assemblies = {}
+        rows = []
+        # A part can appear on multiple paths. Limit rendered paths separately
+        # from the distinct-part safety limit in __init__.
+        pending = [(self.root, "", 0)]
+        while pending:
+            key, path, depth = pending.pop()
+            node = self.nodes[key]
+            is_assembly = bool(node.assembly and node.bom)
+            row = {
+                "part": key,
+                "name": node.name,
+                "ipn": node.ipn,
+                "path": path,
+                "depth": depth,
+                "kind": "assembly"
+                if is_assembly and node.integral
+                else ("virtual" if is_assembly else "material"),
+                "available": str(self.available(key)),
+                "children": is_assembly,
+            }
+            if is_assembly and node.integral:
+                if key == self.root:
+                    row["additional_capacity"], row["capacity_capped"] = current, capped
+                else:
+                    if key not in assemblies:
+                        assemblies[key] = Engine(self.nodes, key).capacity()
+                    row["additional_capacity"], row["capacity_capped"] = assemblies[key]
+            rows.append(row)
+            if len(rows) > 10000:
+                raise CalculationError("BOM exceeds the 10000-row display limit")
+            if is_assembly:
+                for index in reversed(range(len(node.bom))):
+                    child_path = f"{path}/{index}" if path else str(index)
+                    pending.append((node.bom[index].child, child_path, depth + 1))
+        return rows
+
     def report(self, minimum: int = 0) -> dict:
         """Return a JSON-safe explanation with decimal quantities as strings."""
         minimum_decimal = number(minimum)
@@ -308,6 +347,7 @@ class Engine:
             "shortfall": max(0, minimum - current),
             "status": "warning" if current < minimum else "ok",
             "material_limits": self.material_limits(current),
+            "bom_hierarchy": self.bom_hierarchy(current, capped),
             "purchase_shortages": [row(k, q) for k, q in target.shortages.items()],
             "manufacturing_suggestions": suggestions,
             "independent_product_estimate": True,

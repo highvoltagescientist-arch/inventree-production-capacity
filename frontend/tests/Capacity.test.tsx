@@ -15,6 +15,7 @@ const result = {
   shortfall: 2,
   can_edit_minimum: true,
   material_limits: [],
+  bom_hierarchy: [],
   purchase_shortages: [],
   manufacturing_suggestions: [],
   warnings: [],
@@ -32,6 +33,23 @@ function show(component: React.ReactNode) {
 }
 
 describe("capacity UI", () => {
+  it("shows all BOM levels initially and can fold a subassembly", async () => {
+    const ctx = context(vi.fn().mockResolvedValue({ data: {
+      ...result,
+      bom_hierarchy: [
+        { part: 1, name: "製品A", ipn: "", path: "", depth: 0, kind: "assembly", available: "0", children: true, additional_capacity: 3 },
+        { part: 2, name: "組立X", ipn: "", path: "0", depth: 1, kind: "assembly", available: "2", children: true, additional_capacity: 4 },
+        { part: 3, name: "材料Y", ipn: "", path: "0/0", depth: 2, kind: "material", available: "10", children: false },
+      ],
+    }}));
+    show(<CapacityPanel context={ctx} />);
+    await screen.findByText("材料Y");
+    expect(screen.getByText("組立X").closest("tr")?.textContent).toContain("4 個");
+    fireEvent.click(screen.getByRole("button", { name: "組立Xを折りたたむ" }));
+    expect(screen.queryByText("材料Y")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "組立Xを展開" }));
+    expect(screen.getByText("材料Y")).toBeTruthy();
+  });
   it("lists every material limit in ascending order even when overall capacity is zero", async () => {
     const ctx = context(
       vi.fn().mockResolvedValue({
