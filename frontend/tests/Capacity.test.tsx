@@ -187,7 +187,9 @@ describe("capacity UI", () => {
   it("opens the dedicated list from the compact widget", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: { count: 1, limit: 25, results: [result] } }));
     show(renderDashboardItem(ctx));
-    await screen.findByText("1件・不足 1件");
+    await screen.findByText("不足 1件");
+    expect(screen.getByText("製造余力一覧").getAttribute("style")).toContain("blue");
+    expect(screen.getByLabelText("監視対象 1件")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "製造余力一覧を開く" }));
     expect(ctx.navigate).toHaveBeenCalledWith("/plugin/production-capacity/capacity");
   });

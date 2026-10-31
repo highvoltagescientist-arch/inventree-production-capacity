@@ -595,20 +595,36 @@ export function CapacityDashboard({ context, compact = false }: { context: Conte
     const alerts = rows.filter((row) => row.status !== "ok").length;
     const open = () => context.navigate("/plugin/production-capacity/capacity");
     return (
-      <Stack
-        gap={0}
+      <Group
+        gap="xs"
+        wrap="nowrap"
+        justify="space-between"
+        align="center"
         role="button"
         tabIndex={0}
         aria-label="製造余力一覧を開く"
         onClick={open}
         onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") open(); }}
-        style={{ cursor: "pointer" }}
+        style={{ cursor: "pointer", height: "100%" }}
       >
-        <Text size="sm" fw={700} lineClamp={1}>製造余力 ↗</Text>
-        <Text size="xs" lineClamp={1} c={error || alerts ? "red" : undefined}>
-          {error ? "読み込みエラー" : busy ? "計算中…" : `${rows.length}件・不足 ${alerts}件`}
+        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ color: "var(--mantine-color-blue-6)", flexShrink: 0 }}>
+            <path d="M3 21V9l6 3V9l6 3V5l6-2v18H3Z" />
+            <path d="M7 17h1m4 0h1m4 0h1" />
+          </svg>
+          <Stack gap={0} style={{ minWidth: 0 }}>
+            <Text size="sm" fw={700} c="blue" lineClamp={1}>製造余力一覧</Text>
+            {(error || (!busy && alerts > 0)) && (
+              <Text size="xs" c="red" lineClamp={1}>
+                {error ? "読み込みエラー" : `不足 ${alerts}件`}
+              </Text>
+            )}
+          </Stack>
+        </Group>
+        <Text size="xl" c="blue" aria-label={`監視対象 ${rows.length}件`} style={{ flexShrink: 0 }}>
+          {busy ? "…" : rows.length}
         </Text>
-      </Stack>
+      </Group>
     );
   }
   return (
