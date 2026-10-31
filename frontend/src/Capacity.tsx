@@ -17,6 +17,7 @@ interface Context {
   api: {
     get: (url: string) => Promise<{ data: any }>;
     patch: (url: string, data: object) => Promise<{ data: any }>;
+    options?: (url: string) => Promise<{ data: any }>;
   };
   navigate: (path: string) => void;
   forms?: {
@@ -111,6 +112,16 @@ function requireCapacity(data: any): Capacity {
 }
 const independence =
   "製品ごとに独立した試算です。複数製品を同時にこの数量まで製造できる保証はありません。";
+const buildFormFields = [
+  "reference", "part", "title", "quantity", "project_code", "priority",
+  "parent", "sales_order", "batch", "start_date", "target_date",
+  "take_from", "destination", "tags", "link", "responsible", "external",
+];
+const purchaseLineFormFields = [
+  "order", "part", "line", "reference", "quantity", "purchase_price",
+  "purchase_price_currency", "discount", "auto_pricing", "project_code",
+  "target_date", "destination", "build_order", "notes", "link", "merge_items",
+];
 
 function errorText(error: any): string {
   const body = error?.response?.data;
@@ -156,19 +167,13 @@ function Requirements({
   context: Context;
   proposals?: boolean;
 }) {
-  const [selected, setSelected] = useState<{ row: Requirement; supplierPart?: number } | null>(null);
+  const [selected, setSelected] = useState<{ row: Requirement; supplierPart?: number; fields: Record<string, any> } | null>(null);
   const [orderError, setOrderError] = useState("");
   const [orderNotice, setOrderNotice] = useState("");
   const orderForm = context.forms?.create({
     url: proposals ? "build/" : "order/po-line/",
     title: proposals ? "製造オーダーを作成" : "発注明細を追加",
-    fields: proposals
-      ? { reference: {}, part: {}, title: {}, quantity: {} }
-      : {
-          order: {},
-          part: { filters: { part: selected?.row.part, active: true } },
-          quantity: {},
-        },
+    fields: selected?.fields ?? {},
     initialData: selected
       ? proposals
         ? { part: selected.row.part, quantity: Number(selected.row.quantity) }
@@ -186,26 +191,39 @@ function Requirements({
       context.navigate(proposals ? `/part/${row.part}/builds` : "/purchasing/index/purchaseorders");
       return;
     }
-    if (proposals) {
-      setSelected({ row });
-      return;
-    }
     try {
-      const { data } = await context.api.get(`/api/company/part/?part=${row.part}&active=true&limit=2`);
-      if (!Number.isInteger(data?.count) || !Array.isArray(data?.results)) {
-        throw new Error("サプライヤー品目APIの応答が不正です");
+      let supplierPart: number | undefined;
+      if (!proposals) {
+        const { data } = await context.api.get(`/api/company/part/?part=${row.part}&active=true&limit=2`);
+        if (!Number.isInteger(data?.count) || !Array.isArray(data?.results)) {
+          throw new Error("サプライヤー品目APIの応答が不正です");
+        }
+        if (data.count === 0) {
+          setOrderError(`${row.name} のサプライヤー品目がありません。先に部品の「サプライヤー」画面で登録してください。`);
+          return;
+        }
+        supplierPart = data.count === 1 ? data.results[0]?.pk : undefined;
+        if (data.count > 1) {
+          setOrderNotice(`${row.name} のサプライヤー品目が複数あります。発注明細フォームで選択してください。`);
+        }
       }
-      if (data.count === 0) {
-        setOrderError(`${row.name} のサプライヤー品目がありません。先に部品の「サプライヤー」画面で登録してください。`);
-        return;
+      if (!context.api.options) throw new Error("InvenTreeのフォーム設定を取得できません");
+      const endpoint = proposals ? "/api/build/" : "/api/order/po-line/";
+      const { data: options } = await context.api.options(endpoint);
+      const allowed = options?.actions?.POST;
+      if (!allowed || typeof allowed !== "object") {
+        throw new Error("InvenTreeの作成フォーム項目を取得できません");
       }
-      const supplierPart = data?.count === 1 ? data.results?.[0]?.pk : undefined;
-      if (data.count > 1) {
-        setOrderNotice(`${row.name} のサプライヤー品目が複数あります。発注明細フォームで選択してください。`);
+      const keys = proposals ? buildFormFields : purchaseLineFormFields;
+      const fields = Object.fromEntries(keys.filter((key) => key in allowed).map((key) => [key, {}]));
+      if (proposals) fields.part = { filters: { assembly: true, virtual: false } };
+      else {
+        fields.part = { filters: { part: row.part, active: true } };
+        if (fields.auto_pricing) fields.auto_pricing = { default: true };
       }
-      setSelected({ row, supplierPart });
+      setSelected({ row, supplierPart, fields });
     } catch (error) {
-      setOrderError(`サプライヤー品目を取得できませんでした: ${errorText(error)}`);
+      setOrderError(`作成フォームを開けませんでした: ${errorText(error)}`);
     }
   }
   return (

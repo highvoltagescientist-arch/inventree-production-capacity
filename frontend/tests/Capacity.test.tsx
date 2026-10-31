@@ -26,7 +26,16 @@ function context(get = vi.fn().mockResolvedValue({ data: result })) {
   return {
     id: 1,
     navigate: vi.fn(),
-    api: { get, patch: vi.fn().mockResolvedValue({ data: {} }) },
+    api: {
+      get,
+      patch: vi.fn().mockResolvedValue({ data: {} }),
+      options: vi.fn().mockImplementation((url: string) => Promise.resolve({ data: {
+        actions: { POST: url === "/api/build/"
+          ? { reference: {}, part: {}, title: {}, quantity: {}, priority: {}, target_date: {} }
+          : { order: {}, part: {}, quantity: {}, purchase_price: {}, target_date: {}, notes: {} },
+        },
+      } })),
+    },
   };
 }
 function show(component: React.ReactNode) {
@@ -210,11 +219,17 @@ describe("capacity UI", () => {
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
       url: "build/", initialData: { part: 3, quantity: 4 },
     })));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      url: "build/", fields: expect.objectContaining({ priority: {}, target_date: {} }),
+    }));
     fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/company/part/?part=2&active=true&limit=2"));
     await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
       url: "order/po-line/", initialData: { part: 91 },
     })));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      url: "order/po-line/", fields: expect.objectContaining({ purchase_price: {}, notes: {} }),
+    }));
   });
   it("shows supplier lookup errors instead of opening an empty order form", async () => {
     const requirement = { part: 2, name: "不足部品", ipn: "", quantity: "5", required: "10", stock: "5", allocated: "0", available: "5", incoming: "0", scheduled: "0" };
@@ -226,7 +241,7 @@ describe("capacity UI", () => {
     show(<CapacityPanel context={ctx} />);
     await screen.findByText("不足部品");
     fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
-    expect(await screen.findByText(/サプライヤー品目を取得できませんでした: 404 Not Found/)).toBeTruthy();
+    expect(await screen.findByText(/作成フォームを開けませんでした: 404 Not Found/)).toBeTruthy();
   });
   it("explains an HTML response when URL integration is disabled", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));
