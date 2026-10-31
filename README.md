@@ -12,6 +12,7 @@
 ## 機能
 
 - 製品ごとの現在余力、入荷後の参考余力、最低余力、不足数量、警告状態
+- 最低余力を下回る製品全体・材料別の製造可能数を赤く表示。サブアセンブリ単体の製造可能数は製品単位の最低余力と比較しません
 - 材料ごとに、その材料だけで最終製品を何個まで追加製造できるかを上限の低い順に表示。最低余力が0でも表示
 - BOM階層を初期状態ですべて展開。サブアセンブリごとに使用可能な完成在庫と、下位材料から単独で追加製造できる数量を表示
 - 共通材料を合算する多階層BOM計算。在庫サブアセンブリを先に使用し、不足分を材料から製造
@@ -47,14 +48,14 @@
 
 Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
 
-InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.5へ更新してください。更新後にプラグインを有効化します。
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.6へ更新してください。更新後にプラグインを有効化します。
 
 Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.5-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.6-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
@@ -116,7 +117,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.5-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.6-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 

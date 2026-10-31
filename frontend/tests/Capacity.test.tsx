@@ -71,11 +71,25 @@ describe("capacity UI", () => {
     expect(rows[2].textContent).toContain("6 個");
     expect(screen.getByText(/上の材料別上限は最低製造余力/)).toBeTruthy();
   });
+  it("colors capacities below the saved minimum red", async () => {
+    const ctx = context(vi.fn().mockResolvedValue({ data: {
+      ...result,
+      material_limits: [
+        { part: 2, name: "不足材料", ipn: "", capacity: 6, available: "6", allocated: "0", incoming: "0", scheduled: "0", capacity_capped: false },
+        { part: 3, name: "十分な材料", ipn: "", capacity: 12, available: "12", allocated: "0", incoming: "0", scheduled: "0", capacity_capped: false },
+      ],
+    }}));
+    show(<CapacityPanel context={ctx} />);
+    const current = await screen.findByText("現在の追加製造可能数: 8");
+    expect(current.getAttribute("style")).toContain("red");
+    expect(screen.getByText("6 個").getAttribute("style")).toContain("red");
+    expect(screen.getByText("12 個").getAttribute("style") ?? "").not.toContain("red");
+  });
   it("separates immediate capacity and incoming reference and saves target through API", async () => {
     const ctx = context();
     show(<CapacityPanel context={ctx} />);
     await screen.findByText("現在の追加製造可能数: 8");
-    expect(screen.getByText(/12 個（発注済み/)).toBeTruthy();
+    expect(screen.getByText(/個（発注済み/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("最低製造余力"), {
       target: { value: "15" },
     });

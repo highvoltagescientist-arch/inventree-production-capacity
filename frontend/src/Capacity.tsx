@@ -258,7 +258,7 @@ export function CapacityPanel({ context }: { context: Context }) {
         <>
           <Group>
             <Status value={data.status} />
-            <Text>
+            <Text c={data.current_capacity < data.minimum ? "red" : undefined} fw={data.current_capacity < data.minimum ? 700 : undefined}>
               現在の追加製造可能数: {data.current_capacity}
               {data.capacity_capped ? "以上" : ""}
             </Text>
@@ -266,8 +266,9 @@ export function CapacityPanel({ context }: { context: Context }) {
             <Text>不足: {data.shortfall}</Text>
           </Group>
           <Alert title="入荷後の参考数量">
-            {data.future_capacity}
-            {data.future_capacity_capped ? "以上" : ""}{" "}
+            <Text span c={data.future_capacity < data.minimum ? "red" : undefined} fw={data.future_capacity < data.minimum ? 700 : undefined}>
+              {data.future_capacity}{data.future_capacity_capped ? "以上" : ""}
+            </Text>{" "}
             個（発注済みの未入荷分を含む試算。現在は使用できません。入荷時期・製造所要時間は考慮しません。）
           </Alert>
           <Stack gap="xs">
@@ -321,7 +322,11 @@ export function CapacityPanel({ context }: { context: Context }) {
                         <Table.Td>{row.kind === "assembly" ? row.available : "—"}</Table.Td>
                         <Table.Td>
                           {row.additional_capacity === undefined ? "—" :
-                            `${row.additional_capacity}${row.capacity_capped ? "以上" : ""} 個`}
+                            row.path === "" ? (
+                              <Text c={row.additional_capacity < data.minimum ? "red" : undefined} fw={row.additional_capacity < data.minimum ? 700 : undefined}>
+                                {row.additional_capacity}{row.capacity_capped ? "以上" : ""} 個
+                              </Text>
+                            ) : `${row.additional_capacity}${row.capacity_capped ? "以上" : ""} 個`}
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -354,7 +359,9 @@ export function CapacityPanel({ context }: { context: Context }) {
                         <PartLink row={row} context={context} />
                       </Table.Td>
                       <Table.Td>
-                        {row.capacity}{row.capacity_capped ? "以上" : ""} 個
+                        <Text c={row.capacity < data.minimum ? "red" : undefined} fw={row.capacity < data.minimum ? 700 : undefined}>
+                          {row.capacity}{row.capacity_capped ? "以上" : ""} 個
+                        </Text>
                       </Table.Td>
                       <Table.Td>{row.available}</Table.Td>
                       <Table.Td>{row.allocated}</Table.Td>
@@ -511,8 +518,9 @@ export function CapacityDashboard({ context }: { context: Context }) {
                   )}
                 </Table.Td>
                 <Table.Td>
-                  {row.current_capacity ?? "—"}
-                  {row.capacity_capped ? "以上" : ""}
+                  <Text c={row.current_capacity != null && row.minimum != null && row.current_capacity < row.minimum ? "red" : undefined} fw={row.current_capacity != null && row.minimum != null && row.current_capacity < row.minimum ? 700 : undefined}>
+                    {row.current_capacity ?? "—"}{row.capacity_capped ? "以上" : ""}
+                  </Text>
                 </Table.Td>
                 <Table.Td>{row.minimum ?? "—"}</Table.Td>
                 <Table.Td>{row.shortfall ?? "—"}</Table.Td>

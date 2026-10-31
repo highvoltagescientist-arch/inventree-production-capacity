@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inventree-production-capacity"
-version = "0.1.5"
+version = "0.1.6"
 description = "Recursive production capacity planning for InvenTree"
 readme = "README.md"
 requires-python = ">=3.12"
