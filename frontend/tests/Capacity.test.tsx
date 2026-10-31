@@ -193,7 +193,7 @@ describe("capacity UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "製造余力一覧を開く" }));
     expect(ctx.navigate).toHaveBeenCalledWith("/plugin/production-capacity/capacity");
   });
-  it("links shortage and assembly proposals to InvenTree order screens", async () => {
+  it("shows purchase shortages without a purchase action and keeps the build action", async () => {
     const requirement = { part: 2, name: "不足部品", ipn: "", quantity: "5", required: "10", stock: "5", allocated: "0", available: "5", incoming: "0", scheduled: "0" };
     const ctx = context(vi.fn().mockResolvedValue({ data: {
       ...result,
@@ -202,16 +202,14 @@ describe("capacity UI", () => {
     }}));
     show(<CapacityPanel context={ctx} />);
     await screen.findByText("不足部品");
-    fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
-    expect(ctx.navigate).toHaveBeenCalledWith("/purchasing/index/purchaseorders");
+    expect(screen.queryByRole("button", { name: "発注明細を追加" })).toBeNull();
+    expect(screen.getByText(/購入部品・原材料の不足は一覧で確認/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "製造オーダー作成" }));
     expect(ctx.navigate).toHaveBeenCalledWith("/part/3/builds");
   });
-  it("opens native creation forms with the suggested assembly and supplier part", async () => {
+  it("opens the native creation form for the suggested assembly", async () => {
     const requirement = { part: 2, name: "不足部品", ipn: "", quantity: "5", required: "10", stock: "5", allocated: "0", available: "5", incoming: "0", scheduled: "0" };
-    const get = vi.fn().mockImplementation((url: string) => Promise.resolve({ data: url.startsWith("/api/company/part/")
-      ? { count: 1, results: [{ pk: 91 }] }
-      : { ...result, purchase_shortages: [requirement], manufacturing_suggestions: [{ ...requirement, part: 3, name: "組立部品", quantity: "4", materials_ready: true }] } }));
+    const get = vi.fn().mockResolvedValue({ data: { ...result, purchase_shortages: [requirement], manufacturing_suggestions: [{ ...requirement, part: 3, name: "組立部品", quantity: "4", materials_ready: true }] } });
     const ctx = context(get);
     const create = vi.fn().mockReturnValue({ modal: null, open: vi.fn() });
     (ctx as any).forms = { create };
@@ -224,26 +222,7 @@ describe("capacity UI", () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
       url: "build/", fields: expect.objectContaining({ priority: {}, target_date: {} }),
     }));
-    fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/company/part/?part=2&active=true&limit=2"));
-    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
-      url: "order/po-line/", initialData: { part: 91 },
-    })));
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({
-      url: "order/po-line/", fields: expect.objectContaining({ purchase_price: {}, notes: {} }),
-    }));
-  });
-  it("shows supplier lookup errors instead of opening an empty order form", async () => {
-    const requirement = { part: 2, name: "不足部品", ipn: "", quantity: "5", required: "10", stock: "5", allocated: "0", available: "5", incoming: "0", scheduled: "0" };
-    const get = vi.fn().mockImplementation((url: string) => url.startsWith("/api/company/part/")
-      ? Promise.reject(new Error("404 Not Found"))
-      : Promise.resolve({ data: { ...result, purchase_shortages: [requirement] } }));
-    const ctx = context(get);
-    (ctx as any).forms = { create: vi.fn().mockReturnValue({ modal: null, open: vi.fn() }) };
-    show(<CapacityPanel context={ctx} />);
-    await screen.findByText("不足部品");
-    fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
-    expect(await screen.findByText(/作成フォームを開けませんでした: 404 Not Found/)).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith(expect.stringContaining("/api/company/part/"));
   });
   it("explains an HTML response when URL integration is disabled", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));

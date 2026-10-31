@@ -117,11 +117,6 @@ const buildFormFields = [
   "parent", "sales_order", "batch", "start_date", "target_date",
   "take_from", "destination", "tags", "link", "responsible", "external",
 ];
-const purchaseLineFormFields = [
-  "order", "part", "line", "reference", "quantity", "purchase_price",
-  "purchase_price_currency", "discount", "auto_pricing", "project_code",
-  "target_date", "destination", "build_order", "notes", "link", "merge_items",
-];
 
 function errorText(error: any): string {
   const body = error?.response?.data;
@@ -169,61 +164,36 @@ function Requirements({
   context: Context;
   proposals?: boolean;
 }) {
-  const [selected, setSelected] = useState<{ row: Requirement; supplierPart?: number; fields: Record<string, any> } | null>(null);
+  const [selected, setSelected] = useState<{ row: Requirement; fields: Record<string, any> } | null>(null);
   const [orderError, setOrderError] = useState("");
-  const [orderNotice, setOrderNotice] = useState("");
-  const orderForm = context.forms?.create({
-    url: proposals ? "build/" : "order/po-line/",
-    title: proposals ? "製造オーダーを作成" : "発注明細を追加",
+  const orderForm = proposals ? context.forms?.create({
+    url: "build/",
+    title: "製造オーダーを作成",
     fields: selected?.fields ?? {},
     initialData: selected
-      ? proposals
-        ? { part: selected.row.part, quantity: Number(selected.row.quantity) }
-        : { part: selected.supplierPart }
+      ? { part: selected.row.part, quantity: Number(selected.row.quantity) }
       : {},
-  });
+  }) : undefined;
   useEffect(() => {
     if (selected && orderForm) orderForm.open();
   }, [selected]);
 
   async function openOrder(row: Requirement) {
     setOrderError("");
-    setOrderNotice("");
     if (!context.forms) {
-      context.navigate(proposals ? `/part/${row.part}/builds` : "/purchasing/index/purchaseorders");
+      context.navigate(`/part/${row.part}/builds`);
       return;
     }
     try {
-      let supplierPart: number | undefined;
-      if (!proposals) {
-        const { data } = await context.api.get(`/api/company/part/?part=${row.part}&active=true&limit=2`);
-        if (!Number.isInteger(data?.count) || !Array.isArray(data?.results)) {
-          throw new Error("サプライヤー品目APIの応答が不正です");
-        }
-        if (data.count === 0) {
-          setOrderError(`${row.name} のサプライヤー品目がありません。先に部品の「サプライヤー」画面で登録してください。`);
-          return;
-        }
-        supplierPart = data.count === 1 ? data.results[0]?.pk : undefined;
-        if (data.count > 1) {
-          setOrderNotice(`${row.name} のサプライヤー品目が複数あります。発注明細フォームで選択してください。`);
-        }
-      }
       if (!context.api.options) throw new Error("InvenTreeのフォーム設定を取得できません");
-      const endpoint = proposals ? "/api/build/" : "/api/order/po-line/";
-      const { data: options } = await context.api.options(endpoint);
+      const { data: options } = await context.api.options("/api/build/");
       const allowed = options?.actions?.POST;
       if (!allowed || typeof allowed !== "object") {
         throw new Error("InvenTreeの作成フォーム項目を取得できません");
       }
-      const keys = proposals ? buildFormFields : purchaseLineFormFields;
-      const fields = Object.fromEntries(keys.filter((key) => key in allowed).map((key) => [key, {}]));
-      if (proposals) fields.part = { filters: { assembly: true, virtual: false } };
-      else {
-        fields.part = { filters: { part: row.part, active: true } };
-        if (fields.auto_pricing) fields.auto_pricing = { default: true };
-      }
-      setSelected({ row, supplierPart, fields });
+      const fields = Object.fromEntries(buildFormFields.filter((key) => key in allowed).map((key) => [key, {}]));
+      fields.part = { filters: { assembly: true, virtual: false } };
+      setSelected({ row, fields });
     } catch (error) {
       setOrderError(`作成フォームを開けませんでした: ${errorText(error)}`);
     }
@@ -232,7 +202,6 @@ function Requirements({
     <Stack gap="xs">
       {orderForm?.modal}
       {orderError && <Alert color="red">{orderError}</Alert>}
-      {orderNotice && <Alert color="blue">{orderNotice}</Alert>}
       <Title order={5}>{title}</Title>
       {rows.length ? (
         <Table.ScrollContainer minWidth={650}>
@@ -248,7 +217,7 @@ function Requirements({
                 <Table.Th>入荷予定</Table.Th>
                 <Table.Th>製造予定で確保</Table.Th>
                 {proposals && <Table.Th>材料</Table.Th>}
-                <Table.Th>操作</Table.Th>
+                {proposals && <Table.Th>操作</Table.Th>}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -271,15 +240,15 @@ function Requirements({
                         : "下位材料の調達が必要"}
                     </Table.Td>
                   )}
-                  <Table.Td>
+                  {proposals && <Table.Td>
                     <Button
                       size="compact-sm"
                       variant="light"
                       onClick={() => openOrder(row)}
                     >
-                      {proposals ? "製造オーダー作成" : "発注明細を追加"}
+                      製造オーダー作成
                     </Button>
-                  </Table.Td>
+                  </Table.Td>}
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -512,7 +481,7 @@ export function CapacityPanel({ context }: { context: Context }) {
             上の材料別上限は最低製造余力の設定値に依存しません。
           </Text>
           <Text size="sm">
-            製造オーダーは部品と提案数量を入力したフォームを開きます。発注明細は対象部品のサプライヤー品目を選び、既存の発注書に追加します。発注書がなければ先に発注画面で作成してください。梱包単位に応じた発注数量を確認して確定してください。
+            製造オーダーは部品と提案数量を入力したフォームを開きます。購入部品・原材料の不足は一覧で確認し、仕入先と発注書は購買画面で選んでください。
           </Text>
           <Requirements
             title="最低余力達成に不足する購入部品・原材料"
