@@ -50,20 +50,20 @@
 
 製造オーダー作成ボタンはInvenTree標準フォームを開き、送信前に利用者が内容を確認します。購入不足の行には発注ボタンを置きません。仕入先や発注書は状況に応じて購買画面で選んでください。不足数量は内部部品単位なので、発注時には仕入先品目の梱包単位を確認してください。
 
-製造オーダー作成フォームの表示項目は、InvenTreeのOPTIONS応答で利用可能な項目と標準作成画面の項目を照合して表示します。部品・数量の事前入力以外の項目も確認できます。標準画面固有のバッチ自動生成などの補助動作は一部異なります。
+製造オーダー作成フォームの表示項目は、InvenTreeのOPTIONS応答で利用可能な項目と標準作成画面の項目を照合して表示します。タグは標準画面と同じ専用入力タイプで扱います。部品・数量の事前入力以外の項目も確認できます。標準画面固有のバッチ自動生成などの補助動作は一部異なります。
 
 ## インストール・有効化
 
 Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
 
-InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.15へ更新してください。更新後にプラグインを有効化します。
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.16へ更新してください。更新後にプラグインを有効化します。
 
 Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.15-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.16-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
@@ -125,7 +125,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.15-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.16-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 

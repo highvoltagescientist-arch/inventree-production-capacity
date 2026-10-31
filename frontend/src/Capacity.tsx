@@ -193,6 +193,7 @@ function Requirements({
       }
       const fields = Object.fromEntries(buildFormFields.filter((key) => key in allowed).map((key) => [key, {}]));
       fields.part = { filters: { assembly: true, virtual: false } };
+      if (fields.tags) fields.tags = { field_type: "tags" };
       setSelected({ row, fields });
     } catch (error) {
       setOrderError(`作成フォームを開けませんでした: ${errorText(error)}`);

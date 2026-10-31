@@ -31,7 +31,7 @@ function context(get = vi.fn().mockResolvedValue({ data: result })) {
       patch: vi.fn().mockResolvedValue({ data: {} }),
       options: vi.fn().mockImplementation((url: string) => Promise.resolve({ data: {
         actions: { POST: url === "/api/build/"
-          ? { reference: {}, part: {}, title: {}, quantity: {}, priority: {}, target_date: {} }
+          ? { reference: {}, part: {}, title: {}, quantity: {}, priority: {}, target_date: {}, tags: { type: "list" } }
           : { order: {}, part: {}, quantity: {}, purchase_price: {}, target_date: {}, notes: {} },
         },
       } })),
@@ -220,7 +220,7 @@ describe("capacity UI", () => {
       url: "build/", initialData: { part: 3, quantity: 4 },
     })));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
-      url: "build/", fields: expect.objectContaining({ priority: {}, target_date: {} }),
+      url: "build/", fields: expect.objectContaining({ priority: {}, target_date: {}, tags: { field_type: "tags" } }),
     }));
     expect(get).not.toHaveBeenCalledWith(expect.stringContaining("/api/company/part/"));
   });
