@@ -40,19 +40,19 @@
 
 Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
 
-InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの0.1.0は同じ画面から0.1.1へ更新してください。更新後にプラグインを有効化します。
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.2へ更新してください。更新後にプラグインを有効化します。
 
 Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.1-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.2-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
 3. 管理画面のプラグイン一覧で「製造余力管理 / ProductionCapacity」を有効にします。
-4. グローバル設定の `ENABLE_PLUGINS_INTERFACE` と `ENABLE_PLUGINS_URL` を有効にします。
+4. グローバル設定の `ENABLE_PLUGINS_INTERFACE`（画面統合）と `ENABLE_PLUGINS_URL`（計算APIのURL統合）を有効にします。URL統合が無効だと、計算APIの代わりにInvenTreeの画面へ転送されます。
 5. 有効化時に静的ファイルが収集されます。配布更新後は標準の `invoke static` を実行し、ブラウザを再読み込みしてください。Dockerではコンテナ内で実行します。
 6. 完成品詳細の「製造余力」パネルで最低余力を保存するとDashboardの監視対象になります。0を保存した製品も監視対象です。
 7. ダッシュボードのウィジェット追加画面で「製造余力一覧」を選択します。
@@ -109,7 +109,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.1-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.2-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 

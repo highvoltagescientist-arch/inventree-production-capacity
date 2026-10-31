@@ -108,6 +108,17 @@ describe("capacity UI", () => {
     fireEvent.click(screen.getByText("A-001 · 製品A"));
     expect(ctx.navigate).toHaveBeenCalledWith("/part/1");
   });
+  it("explains an HTML response when URL integration is disabled", async () => {
+    const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));
+    show(<CapacityPanel context={ctx} />);
+    expect(await screen.findByText(/URL統合を有効/)).toBeTruthy();
+    expect(screen.queryByText(/現在の追加製造可能数/)).toBeNull();
+  });
+  it("shows a dashboard API error instead of crashing on an HTML response", async () => {
+    const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));
+    show(<CapacityDashboard context={ctx} />);
+    expect(await screen.findByText(/URL統合を有効/)).toBeTruthy();
+  });
   it("explains how to opt into an empty dashboard", async () => {
     const ctx = context(
       vi.fn().mockResolvedValue({ data: { count: 0, limit: 25, results: [] } }),

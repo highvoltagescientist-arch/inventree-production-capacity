@@ -52,6 +52,21 @@ interface Capacity {
   error?: string;
 }
 const base = "/plugin/production-capacity/capacity/";
+const invalidApiResponse =
+  "製造余力APIから正しい応答を取得できません。管理者設定の「URL統合を有効」とプラグインの有効状態を確認してください。";
+function requireCapacity(data: any): Capacity {
+  if (
+    !data ||
+    typeof data.current_capacity !== "number" ||
+    !Array.isArray(data.bottlenecks) ||
+    !Array.isArray(data.purchase_shortages) ||
+    !Array.isArray(data.manufacturing_suggestions) ||
+    !Array.isArray(data.warnings)
+  ) {
+    throw new Error(invalidApiResponse);
+  }
+  return data as Capacity;
+}
 const independence =
   "製品ごとに独立した試算です。複数製品を同時にこの数量まで製造できる保証はありません。";
 
@@ -166,8 +181,9 @@ export function CapacityPanel({ context }: { context: Context }) {
       .get(`${base}${context.id}/`)
       .then(({ data }) => {
         if (active) {
-          setData(data);
-          setMinimum(data.minimum);
+          const result = requireCapacity(data);
+          setData(result);
+          setMinimum(result.minimum);
         }
       })
       .catch((error) => {
@@ -300,6 +316,15 @@ export function CapacityDashboard({ context }: { context: Context }) {
         const { data } = await context.api.get(
           `${base}?limit=25&offset=${offset}`,
         );
+        if (
+          !data ||
+          !Array.isArray(data.results) ||
+          !Number.isInteger(data.count) ||
+          !Number.isInteger(data.limit) ||
+          data.limit < 1
+        ) {
+          throw new Error(invalidApiResponse);
+        }
         all.push(...data.results);
         offset += data.limit;
         if (offset >= data.count) break;
