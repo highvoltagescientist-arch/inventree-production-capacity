@@ -170,6 +170,7 @@ function Requirements({
                 <Table.Th>入荷予定</Table.Th>
                 <Table.Th>製造予定で確保</Table.Th>
                 {proposals && <Table.Th>材料</Table.Th>}
+                <Table.Th>操作</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -192,6 +193,19 @@ function Requirements({
                         : "下位材料の調達が必要"}
                     </Table.Td>
                   )}
+                  <Table.Td>
+                    <Button
+                      size="compact-sm"
+                      variant="light"
+                      onClick={() => context.navigate(
+                        proposals
+                          ? `/part/${row.part}/builds`
+                          : "/purchasing/index/purchaseorders"
+                      )}
+                    >
+                      {proposals ? "製造オーダー作成へ" : "発注書作成へ"}
+                    </Button>
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -423,6 +437,9 @@ export function CapacityPanel({ context }: { context: Context }) {
             最低製造余力は警告判定の閾値です。以下の調達不足と製造提案は、この目標数量を達成するための分析です。
             上の材料別上限は最低製造余力の設定値に依存しません。
           </Text>
+          <Text size="sm">
+            発注書・製造オーダーのボタンはInvenTree標準の作成画面へ移動します。提案数量は自動入力されず、発注先・梱包単位・必要数量を確認して作成してください。
+          </Text>
           <Requirements
             title="最低余力達成に不足する購入部品・原材料"
             rows={data.purchase_shortages}
@@ -505,7 +522,7 @@ export function CapacityDashboard({ context, compact = false }: { context: Conte
     const open = () => context.navigate("/plugin/production-capacity/capacity");
     return (
       <Stack
-        gap="xs"
+        gap={0}
         role="button"
         tabIndex={0}
         aria-label="製造余力一覧を開く"
@@ -513,15 +530,10 @@ export function CapacityDashboard({ context, compact = false }: { context: Conte
         onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") open(); }}
         style={{ cursor: "pointer" }}
       >
-        <Text fw={700}>製造余力一覧を開く ↗</Text>
-        {error ? <Text c="red" size="sm">読み込みエラー: {error}</Text> :
-          busy ? <Text size="sm">計算中…</Text> :
-          <Text size="sm">監視対象 {rows.length}件・余力不足／エラー {alerts}件</Text>}
-        {!busy && rows.slice(0, 3).map((row) => (
-          <Text key={row.part} size="xs" c={row.status === "ok" ? undefined : "red"}>
-            {row.name}: {row.current_capacity ?? "—"} / 最低 {row.minimum ?? "—"}
-          </Text>
-        ))}
+        <Text size="sm" fw={700} lineClamp={1}>製造余力 ↗</Text>
+        <Text size="xs" lineClamp={1} c={error || alerts ? "red" : undefined}>
+          {error ? "読み込みエラー" : busy ? "計算中…" : `${rows.length}件・不足 ${alerts}件`}
+        </Text>
       </Stack>
     );
   }

@@ -178,9 +178,23 @@ describe("capacity UI", () => {
   it("opens the dedicated list from the compact widget", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: { count: 1, limit: 25, results: [result] } }));
     show(renderDashboardItem(ctx));
-    await screen.findByText(/監視対象 1件/);
+    await screen.findByText("1件・不足 1件");
     fireEvent.click(screen.getByRole("button", { name: "製造余力一覧を開く" }));
     expect(ctx.navigate).toHaveBeenCalledWith("/plugin/production-capacity/capacity");
+  });
+  it("links shortage and assembly proposals to InvenTree order screens", async () => {
+    const requirement = { part: 2, name: "不足部品", ipn: "", quantity: "5", required: "10", stock: "5", allocated: "0", available: "5", incoming: "0", scheduled: "0" };
+    const ctx = context(vi.fn().mockResolvedValue({ data: {
+      ...result,
+      purchase_shortages: [requirement],
+      manufacturing_suggestions: [{ ...requirement, part: 3, name: "組立部品", materials_ready: true }],
+    }}));
+    show(<CapacityPanel context={ctx} />);
+    await screen.findByText("不足部品");
+    fireEvent.click(screen.getByRole("button", { name: "発注書作成へ" }));
+    expect(ctx.navigate).toHaveBeenCalledWith("/purchasing/index/purchaseorders");
+    fireEvent.click(screen.getByRole("button", { name: "製造オーダー作成へ" }));
+    expect(ctx.navigate).toHaveBeenCalledWith("/part/3/builds");
   });
   it("explains an HTML response when URL integration is disabled", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));
