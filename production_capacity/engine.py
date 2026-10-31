@@ -269,7 +269,6 @@ class Engine:
         current, capped = self.capacity()
         future, future_capped = self.capacity(future=True)
         target = self.plan(minimum)
-        bottlenecks = self.plan(current + 1)
 
         def row(key, quantity, requirements=target):
             node = self.nodes[key]
@@ -310,9 +309,6 @@ class Engine:
             "status": "warning" if current < minimum else "ok",
             "material_limits": self.material_limits(current),
             "purchase_shortages": [row(k, q) for k, q in target.shortages.items()],
-            "bottlenecks": [
-                row(k, q, bottlenecks) for k, q in bottlenecks.shortages.items()
-            ],
             "manufacturing_suggestions": suggestions,
             "independent_product_estimate": True,
         }

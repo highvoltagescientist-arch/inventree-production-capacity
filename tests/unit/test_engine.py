@@ -273,11 +273,20 @@ def test_shared_material_capacity_against_closed_form_for_many_stock_levels():
             assert engine.capacity()[0] == expected
 
 
-def test_bottleneck_required_quantity_uses_next_unit_plan_not_minimum():
-    engine = Engine({1: node(1, bom=[edge(2, 2)]), 2: node(2, stock=10)}, 1)
-    result = engine.report(100)
-    assert D(result["bottlenecks"][0]["required"]) == 12
-    assert D(result["purchase_shortages"][0]["required"]) == 200
+def test_purchase_shortage_targets_minimum_through_subassembly():
+    engine = Engine(
+        {
+            1: node(1, bom=[edge(2)]),
+            2: node(2, stock=2, bom=[edge(3, 3)]),
+            3: node(3, stock=10),
+        },
+        1,
+    )
+    result = engine.report(6)
+    assert D(result["purchase_shortages"][0]["quantity"]) == 2
+    assert D(result["purchase_shortages"][0]["required"]) == 12
+    assert D(result["manufacturing_suggestions"][0]["quantity"]) == 4
+    assert "bottlenecks" not in result
 
 
 def test_report_keeps_physical_stock_allocated_and_scheduled_separate():

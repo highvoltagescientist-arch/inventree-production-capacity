@@ -55,7 +55,6 @@ interface Capacity {
   capacity_capped: boolean;
   future_capacity_capped: boolean;
   material_limits: MaterialLimit[];
-  bottlenecks: Requirement[];
   purchase_shortages: Requirement[];
   manufacturing_suggestions: Requirement[];
   warnings: string[];
@@ -71,7 +70,6 @@ function requireCapacity(data: any): Capacity {
     !data ||
     typeof data.current_capacity !== "number" ||
     !Array.isArray(data.material_limits) ||
-    !Array.isArray(data.bottlenecks) ||
     !Array.isArray(data.purchase_shortages) ||
     !Array.isArray(data.manufacturing_suggestions) ||
     !Array.isArray(data.warnings)
@@ -320,11 +318,6 @@ export function CapacityPanel({ context }: { context: Context }) {
             最低製造余力は警告判定の閾値です。以下の調達不足と製造提案は、この目標数量を達成するための分析です。
             上の材料別上限は最低製造余力の設定値に依存しません。
           </Text>
-          <Requirements
-            title="ボトルネック（現在余力＋1個を製造する際の不足）"
-            rows={data.bottlenecks}
-            context={context}
-          />
           <Requirements
             title="最低余力達成に不足する購入部品・原材料"
             rows={data.purchase_shortages}

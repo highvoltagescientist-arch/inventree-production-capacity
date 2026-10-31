@@ -15,7 +15,6 @@ const result = {
   shortfall: 2,
   can_edit_minimum: true,
   material_limits: [],
-  bottlenecks: [],
   purchase_shortages: [],
   manufacturing_suggestions: [],
   warnings: [],
