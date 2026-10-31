@@ -19,6 +19,9 @@ interface Context {
     patch: (url: string, data: object) => Promise<{ data: any }>;
   };
   navigate: (path: string) => void;
+  forms?: {
+    create: (options: any) => { modal: React.ReactNode; open: () => void };
+  };
 }
 interface Requirement {
   part: number;
@@ -153,8 +156,47 @@ function Requirements({
   context: Context;
   proposals?: boolean;
 }) {
+  const [selected, setSelected] = useState<{ row: Requirement; supplierPart?: number } | null>(null);
+  const orderForm = context.forms?.create({
+    url: proposals ? "build/" : "order/po-line/",
+    title: proposals ? "製造オーダーを作成" : "発注明細を追加",
+    fields: proposals
+      ? { reference: {}, part: {}, title: {}, quantity: {} }
+      : {
+          order: {},
+          part: { filters: { part: selected?.row.part, active: true } },
+          quantity: {},
+        },
+    initialData: selected
+      ? proposals
+        ? { part: selected.row.part, quantity: Number(selected.row.quantity) }
+        : { part: selected.supplierPart }
+      : {},
+  });
+  useEffect(() => {
+    if (selected && orderForm) orderForm.open();
+  }, [selected]);
+
+  async function openOrder(row: Requirement) {
+    if (!context.forms) {
+      context.navigate(proposals ? `/part/${row.part}/builds` : "/purchasing/index/purchaseorders");
+      return;
+    }
+    if (proposals) {
+      setSelected({ row });
+      return;
+    }
+    try {
+      const { data } = await context.api.get(`company/part/?part=${row.part}&active=true&limit=2`);
+      const supplierPart = data?.count === 1 ? data.results?.[0]?.pk : undefined;
+      setSelected({ row, supplierPart });
+    } catch {
+      setSelected({ row });
+    }
+  }
   return (
     <Stack gap="xs">
+      {orderForm?.modal}
       <Title order={5}>{title}</Title>
       {rows.length ? (
         <Table.ScrollContainer minWidth={650}>
@@ -197,13 +239,9 @@ function Requirements({
                     <Button
                       size="compact-sm"
                       variant="light"
-                      onClick={() => context.navigate(
-                        proposals
-                          ? `/part/${row.part}/builds`
-                          : "/purchasing/index/purchaseorders"
-                      )}
+                      onClick={() => openOrder(row)}
                     >
-                      {proposals ? "製造オーダー作成へ" : "発注書作成へ"}
+                      {proposals ? "製造オーダー作成" : "発注明細を追加"}
                     </Button>
                   </Table.Td>
                 </Table.Tr>
@@ -438,7 +476,7 @@ export function CapacityPanel({ context }: { context: Context }) {
             上の材料別上限は最低製造余力の設定値に依存しません。
           </Text>
           <Text size="sm">
-            発注書・製造オーダーのボタンはInvenTree標準の作成画面へ移動します。提案数量は自動入力されず、発注先・梱包単位・必要数量を確認して作成してください。
+            製造オーダーは部品と提案数量を入力したフォームを開きます。発注明細は対象部品のサプライヤー品目を選び、既存の発注書に追加します。発注書がなければ先に発注画面で作成してください。梱包単位に応じた発注数量を確認して確定してください。
           </Text>
           <Requirements
             title="最低余力達成に不足する購入部品・原材料"

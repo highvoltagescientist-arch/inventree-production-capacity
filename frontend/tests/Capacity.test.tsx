@@ -191,10 +191,29 @@ describe("capacity UI", () => {
     }}));
     show(<CapacityPanel context={ctx} />);
     await screen.findByText("不足部品");
-    fireEvent.click(screen.getByRole("button", { name: "発注書作成へ" }));
+    fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
     expect(ctx.navigate).toHaveBeenCalledWith("/purchasing/index/purchaseorders");
-    fireEvent.click(screen.getByRole("button", { name: "製造オーダー作成へ" }));
+    fireEvent.click(screen.getByRole("button", { name: "製造オーダー作成" }));
     expect(ctx.navigate).toHaveBeenCalledWith("/part/3/builds");
+  });
+  it("opens native creation forms with the suggested assembly and supplier part", async () => {
+    const requirement = { part: 2, name: "不足部品", ipn: "", quantity: "5", required: "10", stock: "5", allocated: "0", available: "5", incoming: "0", scheduled: "0" };
+    const get = vi.fn().mockImplementation((url: string) => Promise.resolve({ data: url.startsWith("company/part/")
+      ? { count: 1, results: [{ pk: 91 }] }
+      : { ...result, purchase_shortages: [requirement], manufacturing_suggestions: [{ ...requirement, part: 3, name: "組立部品", quantity: "4", materials_ready: true }] } }));
+    const ctx = context(get);
+    const create = vi.fn().mockReturnValue({ modal: null, open: vi.fn() });
+    (ctx as any).forms = { create };
+    show(<CapacityPanel context={ctx} />);
+    await screen.findByText("不足部品");
+    fireEvent.click(screen.getByRole("button", { name: "製造オーダー作成" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      url: "build/", initialData: { part: 3, quantity: 4 },
+    })));
+    fireEvent.click(screen.getByRole("button", { name: "発注明細を追加" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      url: "order/po-line/", initialData: { part: 91 },
+    })));
   });
   it("explains an HTML response when URL integration is disabled", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: "<html>InvenTree</html>" }));

@@ -17,7 +17,7 @@
 - BOM階層を初期状態ですべて展開。サブアセンブリごとに使用可能な完成在庫と、下位材料から単独で追加製造できる数量を表示
 - 共通材料を合算する多階層BOM計算。在庫サブアセンブリを先に使用し、不足分を材料から製造
 - 最低余力達成に不足する購入部品・材料と、下位から順に製造するサブアセンブリの提案
-- 提案行からInvenTree標準の発注書・製造オーダー作成画面へ移動。数量や発注先は作成画面で確認して入力し、プラグインは注文を自動作成しません
+- 製造提案からInvenTree標準の製造オーダーフォームを開き、対象部品と提案数量を事前入力。材料不足から標準の発注明細フォームを開き、対象内部部品のサプライヤー品目に絞る。候補が1件なら事前選択
 - 部品詳細パネルと、監視対象の概要を示すDashboard Widget。ウィジェットを押すとプラグイン専用の一覧ページに移動し、現在余力・最低余力・不足・状態を警告優先で表示
 - ウィジェットは小さい枠でも見切れにくい2行の要約（監視件数・不足件数）を表示
 - 部品詳細パネルの「ウィジェットに表示」スイッチで一覧への掲載を個別に設定。最低余力の値とは独立
@@ -47,18 +47,20 @@
 
 不足材料が残る製造提案には「下位材料の調達が必要」と表示します。「材料充足」は当該試算の下位材料が足りるという意味で、製造設備・工数・納期の保証ではありません。
 
+注文ボタンはInvenTree標準フォームを開くだけで、送信前に利用者が内容を確認します。発注明細には既存の発注書とサプライヤー品目が必要です。内部部品に対するサプライヤー品目が複数ある場合はフォームで選択し、存在しない場合は先に登録してください。提案数量は内部部品単位なので、発注明細の数量はサプライヤー品目の梱包単位に換算して入力します。
+
 ## インストール・有効化
 
 Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
 
-InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.9へ更新してください。更新後にプラグインを有効化します。
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.10へ更新してください。更新後にプラグインを有効化します。
 
 Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.9-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.10-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
@@ -120,7 +122,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.9-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.10-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 
