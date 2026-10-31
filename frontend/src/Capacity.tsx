@@ -75,6 +75,17 @@ interface Capacity {
   can_edit_minimum: boolean;
   error?: string;
 }
+interface DashboardRow {
+  part: number;
+  name: string;
+  ipn: string;
+  status: "ok" | "warning" | "error";
+  current_capacity?: number;
+  capacity_capped?: boolean;
+  minimum?: number;
+  shortfall?: number;
+  error?: string;
+}
 const base = "/plugin/production-capacity/capacity/";
 const invalidApiResponse =
   "製造余力APIから正しい応答を取得できません。管理者設定の「URL統合を有効」とプラグインの有効状態を確認してください。";
@@ -430,7 +441,7 @@ export function CapacityPanel({ context }: { context: Context }) {
 }
 
 export function CapacityDashboard({ context }: { context: Context }) {
-  const [rows, setRows] = useState<Capacity[]>([]);
+  const [rows, setRows] = useState<DashboardRow[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -439,7 +450,7 @@ export function CapacityDashboard({ context }: { context: Context }) {
     setBusy(true);
     setError("");
     async function load() {
-      const all: Capacity[] = [];
+      const all: DashboardRow[] = [];
       let offset = 0;
       while (active) {
         const { data } = await context.api.get(
@@ -480,7 +491,7 @@ export function CapacityDashboard({ context }: { context: Context }) {
   return (
     <Stack gap="xs">
       <Group justify="space-between">
-        <Text fw={600}>製造余力一覧</Text>
+        <Text fw={600}>製造余力一覧{!busy && `（${rows.length}件）`}</Text>
         <Button
           size="xs"
           loading={busy}
@@ -490,6 +501,12 @@ export function CapacityDashboard({ context }: { context: Context }) {
         </Button>
       </Group>
       {error && <Alert color="red">{error}</Alert>}
+      {busy && <Text size="sm">製造余力を計算中…</Text>}
+      {!busy && rows.length > 0 && (
+        <Text size="sm" c={rows.some((row) => row.status !== "ok") ? "red" : undefined}>
+          余力不足・エラー: {rows.filter((row) => row.status !== "ok").length}件
+        </Text>
+      )}
       {!busy && !rows.length && !error && (
         <Text>
           製品の「製造余力」パネルで最低余力を保存すると、ここに表示されます。

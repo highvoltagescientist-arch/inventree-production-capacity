@@ -13,7 +13,7 @@ from stock.models import StockItem
 from users.permissions import check_user_permission
 
 from .engine import MAX_CAPACITY, CalculationError
-from .service import METADATA_KEY, calculate
+from .service import METADATA_KEY, calculate, calculate_summary
 
 
 def can_edit(user):
@@ -91,7 +91,7 @@ class DashboardView(APIView):
         rows = []
         for part in parts[offset : offset + limit]:
             try:
-                rows.append(calculate(part))
+                rows.append(calculate_summary(part))
             except CalculationError as exc:
                 rows.append(
                     {

@@ -352,3 +352,23 @@ class Engine:
             "manufacturing_suggestions": suggestions,
             "independent_product_estimate": True,
         }
+
+    def summary(self, minimum: int = 0) -> dict:
+        """Calculate only the values required by the dashboard list."""
+        minimum_decimal = number(minimum)
+        if minimum_decimal != int(minimum_decimal) or minimum_decimal > MAX_CAPACITY:
+            raise CalculationError(
+                "Minimum must be an integer between 0 and 1000000000"
+            )
+        minimum = int(minimum_decimal)
+        current, capped = self.capacity()
+        return {
+            "part": self.root,
+            "name": self.nodes[self.root].name,
+            "ipn": self.nodes[self.root].ipn,
+            "current_capacity": current,
+            "capacity_capped": capped,
+            "minimum": minimum,
+            "shortfall": max(0, minimum - current),
+            "status": "warning" if current < minimum else "ok",
+        }

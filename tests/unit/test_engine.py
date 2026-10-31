@@ -289,6 +289,16 @@ def test_purchase_shortage_targets_minimum_through_subassembly():
     assert "bottlenecks" not in result
 
 
+def test_dashboard_summary_matches_capacity_without_detailed_searches():
+    engine = Engine({1: node(1, bom=[edge(2, 2)]), 2: node(2, stock=10)}, 1)
+    summary = engine.summary(6)
+    assert summary["current_capacity"] == 5
+    assert summary["shortfall"] == 1
+    assert summary["status"] == "warning"
+    assert "material_limits" not in summary
+    assert "bom_hierarchy" not in summary
+
+
 def test_bom_hierarchy_uses_exact_standalone_assembly_capacity():
     engine = Engine(
         {

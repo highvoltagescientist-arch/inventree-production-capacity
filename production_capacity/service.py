@@ -147,3 +147,9 @@ def calculate(part):
         }
     )
     return result
+
+
+def calculate_summary(part):
+    """Dashboard summary without detailed material and assembly searches."""
+    engine, _warnings = snapshot(part)
+    return engine.summary(minimum_for(part))

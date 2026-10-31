@@ -153,6 +153,8 @@ describe("capacity UI", () => {
     const ctx = context(get);
     show(<CapacityDashboard context={ctx} />);
     await screen.findByText("A-001 · 製品A");
+    expect(screen.getByText("製造余力一覧（2件）")).toBeTruthy();
+    expect(screen.getByText("余力不足・エラー: 1件")).toBeTruthy();
     expect(get).toHaveBeenCalledWith(
       "/plugin/production-capacity/capacity/?limit=25&offset=1",
     );

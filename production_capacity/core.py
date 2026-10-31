@@ -43,6 +43,6 @@ class ProductionCapacity(UrlsMixin, UserInterfaceMixin, InvenTreePlugin):
                 "title": "製造余力一覧",
                 "description": "監視対象製品の製造余力と不足数量",
                 "source": self.plugin_static_file("Capacity.js:renderDashboardItem"),
-                "options": {"width": 4, "height": 4},
+                "options": {"width": 6, "height": 5},
             }
         ]
