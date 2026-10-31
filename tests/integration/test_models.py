@@ -278,4 +278,8 @@ class CapacityModelTests(TestCase):
             name="Variant raw", variant_of=self.raw, component=True
         )
         StockItem.objects.create(part=variant_raw, quantity=100)
-        assert calculate(variant)["current_capacity"] == 10
+        report = calculate(variant)
+        assert report["current_capacity"] == 10
+        assert [
+            (row["part"], row["capacity"]) for row in report["material_limits"]
+        ] == [(self.raw.pk, 10)]

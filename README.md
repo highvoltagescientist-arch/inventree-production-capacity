@@ -12,6 +12,7 @@
 ## 機能
 
 - 製品ごとの現在余力、入荷後の参考余力、最低余力、不足数量、警告状態
+- 材料ごとに、その材料だけで最終製品を何個まで追加製造できるかを上限の低い順に表示。最低余力が0でも表示
 - 共通材料を合算する多階層BOM計算。在庫サブアセンブリを先に使用し、不足分を材料から製造
 - 最低余力達成に不足する購入部品・材料と、下位から順に製造するサブアセンブリの提案
 - 次の1個を製造する際のボトルネック
@@ -23,6 +24,10 @@
 ## 計算の初期仕様
 
 完成品の既存在庫は余力に加えません。表示するのは追加製造可能数量です。製品ごとに独立した試算であり、同じ在庫を複数製品が同時利用できるという意味ではありません。計算は在庫を予約しません。
+
+**材料別上限**は、BOMの末端材料・購入部品それぞれについて、他の末端材料だけを十分に調達できると仮定した場合の最終製品の追加製造上限です。全体の現在余力が0でも、すべての材料の上限を低い順に示します。各候補数量についてBOM全体を展開し、共通材料の需要を集約し、サブアセンブリ完成在庫を先に使ってから下位材料を要求します。段取り数量、歩留まり、端数処理も通常の余力計算と同じです。単純な「材料在庫÷1個分の使用量」は使いません。入荷予定は材料別の**現在**上限に含めず、参考欄に別表示します。10億個まで不足しない材料は「10億個以上」と表示します。大規模BOMでは材料数に応じて画面表示時の計算時間が増えます。
+
+**最低製造余力**は警告判定の閾値です。材料別上限の表示対象や計算には使いません。「調達不足」と「サブアセンブリ製造提案」は、設定した最低製造余力を目標数量として達成するための分析です。最低製造余力が0ならこれらの目標別提案は空になります。
 
 1. `Part.get_bom_items()` から継承BOMを含む構成を取得します。
 2. `StockItem.IN_STOCK_FILTER` で使用可能な実在庫を抽出します。外部保管場所は除外し、保管場所未指定の在庫は含めます。
@@ -40,14 +45,14 @@
 
 Wheelにはビルド済みUIを同梱するため、利用側でNode.jsは不要です。GitHubからのインストールでも同梱済みUIが使われます。
 
-InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.2へ更新してください。更新後にプラグインを有効化します。
+InvenTree 1.6.3では、プラグイン管理画面からパッケージ名 `inventree-production-capacity`、URL `git+https://github.com/highvoltagescientist-arch/inventree-production-capacity.git` を指定してインストールできます。インストール済みの旧版は同じ画面から0.1.3へ更新してください。更新後にプラグインを有効化します。
 
 Wheelを使う場合は次の手順です。
 
 1. 下記手順でWheelを作成し、**InvenTreeを実行しているPython環境**にインストールします。
 
    ```sh
-   python -m pip install /path/to/inventree_production_capacity-0.1.2-py3-none-any.whl
+   python -m pip install /path/to/inventree_production_capacity-0.1.3-py3-none-any.whl
    ```
 
 2. `INVENTREE_PLUGINS_ENABLED=True` に設定し、サーバーとワーカーを再起動します。
@@ -109,7 +114,7 @@ python manage.py test tests.integration.test_models \
 python -m build
 ```
 
-`dist/inventree_production_capacity-0.1.2-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
+`dist/inventree_production_capacity-0.1.3-py3-none-any.whl` とソース配布物を生成します。PyPIへは送信しません。
 
 GitHub Actionsの設定例は `docs/ci-workflow.example.yml` です。単体テスト・UIテスト・UIビルド・Wheelビルドと成果物保存に対応しています。導入時のGit認証に `workflow` 権限がないため自動実行は未設定です。権限を持つ環境で `.github/workflows/test.yml` に配置すると有効になります。
 

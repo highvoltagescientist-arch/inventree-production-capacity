@@ -84,6 +84,45 @@ def test_common_raw_material_across_multiple_levels():
     assert engine.report(5)["purchase_shortages"][0]["quantity"] == "5"
 
 
+def test_material_limits_show_every_constraint_independent_of_warning_minimum():
+    engine = Engine(
+        {
+            1: node(1, bom=[edge(2), edge(3, 5)]),
+            2: node(2, stock=0),
+            3: node(3, stock=30),
+        },
+        1,
+    )
+    limits = engine.report(0)["material_limits"]
+    assert [(row["part"], row["capacity"]) for row in limits] == [(2, 0), (3, 6)]
+    assert engine.report(100)["material_limits"] == limits
+    assert engine.report(0)["current_capacity"] == 0
+
+
+def test_material_limit_uses_shared_demand_stocked_subassembly_and_setup():
+    engine = Engine(
+        {
+            1: node(1, bom=[edge(2), edge(3, 2), edge(4)]),
+            2: node(2, stock=2, bom=[edge(3, 3, setup=D(1))]),
+            3: node(3, stock=30),
+            4: node(4, stock=0),
+        },
+        1,
+    )
+    limits = engine.report()["material_limits"]
+    assert [(row["part"], row["capacity"]) for row in limits] == [(4, 0), (3, 7)]
+    assert engine.plan(7).demand[3] == 30
+    assert engine.plan(8).demand[3] == 35
+
+
+def test_material_limit_respects_rounding_instead_of_simple_division():
+    engine = Engine(
+        {1: node(1, bom=[edge(2, "0.5", rounding=D(2))]), 2: node(2, stock=5)},
+        1,
+    )
+    assert engine.report()["material_limits"][0]["capacity"] == 8
+
+
 def test_shared_assembly_aggregates_demand_before_rounding_and_setup():
     engine = Engine(
         {

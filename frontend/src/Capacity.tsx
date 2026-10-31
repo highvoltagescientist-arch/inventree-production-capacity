@@ -32,6 +32,17 @@ interface Requirement {
   required: string;
   materials_ready?: boolean;
 }
+interface MaterialLimit {
+  part: number;
+  name: string;
+  ipn: string;
+  capacity: number;
+  capacity_capped: boolean;
+  available: string;
+  allocated: string;
+  incoming: string;
+  scheduled: string;
+}
 interface Capacity {
   part: number;
   name: string;
@@ -43,6 +54,7 @@ interface Capacity {
   shortfall: number;
   capacity_capped: boolean;
   future_capacity_capped: boolean;
+  material_limits: MaterialLimit[];
   bottlenecks: Requirement[];
   purchase_shortages: Requirement[];
   manufacturing_suggestions: Requirement[];
@@ -58,6 +70,7 @@ function requireCapacity(data: any): Capacity {
   if (
     !data ||
     typeof data.current_capacity !== "number" ||
+    !Array.isArray(data.material_limits) ||
     !Array.isArray(data.bottlenecks) ||
     !Array.isArray(data.purchase_shortages) ||
     !Array.isArray(data.manufacturing_suggestions) ||
@@ -243,6 +256,43 @@ export function CapacityPanel({ context }: { context: Context }) {
             {data.future_capacity_capped ? "以上" : ""}{" "}
             個（発注済みの未入荷分を含む試算。現在は使用できません。入荷時期・製造所要時間は考慮しません。）
           </Alert>
+          <Stack gap="xs">
+            <Title order={5}>材料別の製造可能数（上限の低い順）</Title>
+            <Text size="sm">
+              各材料だけを制約とした追加製造数です。多階層BOM、共通材料の合算、サブアセンブリ在庫、段取り数量と端数処理を含めて計算します。
+              他の材料も必要なため、実際の現在余力は一覧の最小値です。入荷予定はこの上限に含めません。
+            </Text>
+            <Table.ScrollContainer minWidth={650}>
+              <Table striped>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>材料</Table.Th>
+                    <Table.Th>この材料による上限</Table.Th>
+                    <Table.Th>使用可能在庫</Table.Th>
+                    <Table.Th>引当済み</Table.Th>
+                    <Table.Th>製造予定で確保</Table.Th>
+                    <Table.Th>入荷予定（参考）</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {data.material_limits.map((row) => (
+                    <Table.Tr key={row.part}>
+                      <Table.Td>
+                        <PartLink row={row} context={context} />
+                      </Table.Td>
+                      <Table.Td>
+                        {row.capacity}{row.capacity_capped ? "以上" : ""} 個
+                      </Table.Td>
+                      <Table.Td>{row.available}</Table.Td>
+                      <Table.Td>{row.allocated}</Table.Td>
+                      <Table.Td>{row.scheduled}</Table.Td>
+                      <Table.Td>{row.incoming}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Stack>
           <Group align="end">
             <NumberInput
               label="最低製造余力"
@@ -266,6 +316,10 @@ export function CapacityPanel({ context }: { context: Context }) {
               保存・監視対象に追加
             </Button>
           </Group>
+          <Text size="sm">
+            最低製造余力は警告判定の閾値です。以下の調達不足と製造提案は、この目標数量を達成するための分析です。
+            上の材料別上限は最低製造余力の設定値に依存しません。
+          </Text>
           <Requirements
             title="ボトルネック（現在余力＋1個を製造する際の不足）"
             rows={data.bottlenecks}

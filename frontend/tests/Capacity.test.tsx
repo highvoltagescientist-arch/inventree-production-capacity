@@ -14,6 +14,7 @@ const result = {
   minimum: 10,
   shortfall: 2,
   can_edit_minimum: true,
+  material_limits: [],
   bottlenecks: [],
   purchase_shortages: [],
   manufacturing_suggestions: [],
@@ -32,6 +33,27 @@ function show(component: React.ReactNode) {
 }
 
 describe("capacity UI", () => {
+  it("lists every material limit in ascending order even when overall capacity is zero", async () => {
+    const ctx = context(
+      vi.fn().mockResolvedValue({
+        data: {
+          ...result,
+          current_capacity: 0,
+          minimum: 0,
+          material_limits: [
+            { part: 2, name: "外箱", ipn: "BOX", capacity: 0, available: "0", allocated: "0", incoming: "0", scheduled: "0", capacity_capped: false },
+            { part: 3, name: "皿ねじ M3x5", ipn: "SCREW", capacity: 6, available: "30", allocated: "0", incoming: "0", scheduled: "0", capacity_capped: false },
+          ],
+        },
+      }),
+    );
+    show(<CapacityPanel context={ctx} />);
+    await screen.findByText("BOX · 外箱");
+    const rows = screen.getAllByRole("row");
+    expect(rows[1].textContent).toContain("0 個");
+    expect(rows[2].textContent).toContain("6 個");
+    expect(screen.getByText(/上の材料別上限は最低製造余力/)).toBeTruthy();
+  });
   it("separates immediate capacity and incoming reference and saves target through API", async () => {
     const ctx = context();
     show(<CapacityPanel context={ctx} />);

@@ -186,6 +186,78 @@ class Engine:
                 high = mid
         return low, False
 
+    def material_limits(self, current: int) -> list[dict]:
+        """Exact final-product limit imposed by each terminal material alone.
+
+        Every candidate uses the same complete plan as overall capacity, so
+        inherited/shared paths, stocked subassemblies, setup and rounding keep
+        their normal semantics. Other terminal shortages are ignored only when
+        deciding whether a particular material is limiting.
+        """
+        materials = [
+            key
+            for key in self.order
+            if not (self.nodes[key].assembly and self.nodes[key].bom)
+        ]
+        low = dict.fromkeys(materials, current)
+        upper: dict[int, int] = {}
+        capped: set[int] = set()
+        unresolved = materials.copy()
+
+        if current == MAX_CAPACITY:
+            capped.update(materials)
+        else:
+            high = min(MAX_CAPACITY, max(1, current + 1))
+            while unresolved:
+                shortages = self.plan(high).shortages
+                still_unresolved = []
+                for key in unresolved:
+                    if key in shortages:
+                        upper[key] = high
+                    else:
+                        low[key] = high
+                        still_unresolved.append(key)
+                unresolved = still_unresolved
+                if high == MAX_CAPACITY:
+                    capped.update(unresolved)
+                    break
+                high = min(MAX_CAPACITY, high * 2)
+
+            # Search all materials together; materials sharing a midpoint use
+            # one full BOM plan, not one plan per material.
+            pending = [key for key in upper if upper[key] - low[key] > 1]
+            while pending:
+                groups: dict[int, list[int]] = defaultdict(list)
+                for key in pending:
+                    groups[(low[key] + upper[key]) // 2].append(key)
+                for midpoint, keys in groups.items():
+                    shortages = self.plan(midpoint).shortages
+                    for key in keys:
+                        if key in shortages:
+                            upper[key] = midpoint
+                        else:
+                            low[key] = midpoint
+                pending = [key for key in pending if upper[key] - low[key] > 1]
+
+        rows = []
+        for key in materials:
+            node = self.nodes[key]
+            rows.append(
+                {
+                    "part": key,
+                    "name": node.name,
+                    "ipn": node.ipn,
+                    "capacity": low[key],
+                    "capacity_capped": key in capped,
+                    "stock": str(node.stock + node.allocated),
+                    "allocated": str(node.allocated),
+                    "available": str(self.available(key)),
+                    "incoming": str(node.incoming),
+                    "scheduled": str(node.scheduled),
+                }
+            )
+        return sorted(rows, key=lambda row: (row["capacity"], row["name"], row["part"]))
+
     def report(self, minimum: int = 0) -> dict:
         """Return a JSON-safe explanation with decimal quantities as strings."""
         minimum_decimal = number(minimum)
@@ -236,6 +308,7 @@ class Engine:
             "minimum": minimum,
             "shortfall": max(0, minimum - current),
             "status": "warning" if current < minimum else "ok",
+            "material_limits": self.material_limits(current),
             "purchase_shortages": [row(k, q) for k, q in target.shortages.items()],
             "bottlenecks": [
                 row(k, q, bottlenecks) for k, q in bottlenecks.shortages.items()
