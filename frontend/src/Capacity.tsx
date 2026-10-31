@@ -141,15 +141,17 @@ function Status({ value }: { value: string }) {
 function PartLink({
   row,
   context,
+  capacityPanel = false,
 }: {
   row: { part: number; name: string; ipn: string };
   context: Context;
+  capacityPanel?: boolean;
 }) {
   return (
     <Button
       variant="subtle"
       size="compact-sm"
-      onClick={() => context.navigate(`/part/${row.part}`)}
+      onClick={() => context.navigate(`/part/${row.part}${capacityPanel ? "/production-capacity" : ""}`)}
     >
       {row.ipn ? `${row.ipn} · ` : ""}
       {row.name}
@@ -648,7 +650,7 @@ export function CapacityDashboard({ context, compact = false }: { context: Conte
             {rows.map((row) => (
               <Table.Tr key={row.part}>
                 <Table.Td>
-                  <PartLink row={row} context={context} />
+                  <PartLink row={row} context={context} capacityPanel />
                   {row.error && (
                     <Text c="red" size="xs">
                       {row.error}

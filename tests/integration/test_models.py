@@ -212,6 +212,10 @@ class CapacityModelTests(TestCase):
             assert plugin.get_ui_dashboard_items(None, {})[0]["source"].endswith(
                 "Capacity.js:renderDashboardItem"
             )
+            assert plugin.get_ui_dashboard_items(None, {})[0]["options"] == {
+                "width": 2,
+                "height": 1,
+            }
             assert plugin.get_ui_routes(None, {})[0]["source"].endswith(
                 "Capacity.js:renderCapacityListPage"
             )

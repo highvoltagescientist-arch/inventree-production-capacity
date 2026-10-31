@@ -182,7 +182,7 @@ describe("capacity UI", () => {
     const products = screen.getAllByRole("row");
     expect(products[1].textContent).toContain("製品A");
     fireEvent.click(screen.getByText("A-001 · 製品A"));
-    expect(ctx.navigate).toHaveBeenCalledWith("/part/1");
+    expect(ctx.navigate).toHaveBeenCalledWith("/part/1/production-capacity");
   });
   it("opens the dedicated list from the compact widget", async () => {
     const ctx = context(vi.fn().mockResolvedValue({ data: { count: 1, limit: 25, results: [result] } }));
